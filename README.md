@@ -1,0 +1,2 @@
+# parsql
+Deneyimsel sql yardımcısı
