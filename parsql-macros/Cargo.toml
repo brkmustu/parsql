@@ -1,0 +1,22 @@
+[package]
+name = "parsql-macros"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "2.0.90"
+quote = "1.0.37"
+proc-macro2 = "1.0.92"
+regex = "1.11.1"
+postgres = { version = "0.19.9", optional = true }
+tokio-postgres = { version = "0.7.12", optional = true }
+rusqlite = { version = "0.32.1", optional = true }
+
+[features]
+default = []
+tokio-postgres = ["dep:postgres", "dep:tokio-postgres"]
+sqlite = ["dep:rusqlite"]
+postgres = ["dep:postgres"]

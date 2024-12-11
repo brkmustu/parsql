@@ -1,0 +1,29 @@
+[package]
+name = "parsql"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+package.authors = ["Mehmet Burak Muştu"]
+package.description = "Deneyimsel bir sql yardımcı küfesidir."
+resolver = "2"
+members = [
+    "examples/deadpool-postgres",
+    "examples/postgres",
+    "examples/sqlite",
+    "examples/tokio-postgres",
+    "parsql-macros",
+    "parsql-postgres",
+    "parsql-sqlite",
+]
+
+[features]
+default = ["postgres"]
+sqlite = ["parsql-macros/sqlite"]
+postgres = ["parsql-macros/postgres"]
+tokio-postgres = ["parsql-macros/tokio-postgres"]
+deadpool-postgres = ["parsql-macros/tokio-postgres"]
+
+[dependencies]
+parsql-macros = { path = "parsql-macros", optional = true }
+

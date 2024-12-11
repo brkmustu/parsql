@@ -1,0 +1,26 @@
+[package]
+name = "parsql-postgres"
+version = "0.1.0"
+edition = "2021"
+
+[features]
+default = []
+postgres = ["dep:postgres"]
+tokio-postgres = ["dep:postgres", "dep:tokio-postgres", "parsql-macros/tokio-postgres"]
+deadpool-postgres = [
+    "dep:postgres",
+    "dep:tokio-postgres",
+    "dep:deadpool-postgres",
+    "parsql-macros/tokio-postgres",
+]
+
+[dependencies]
+postgres = { version = "0.19.9", optional = true }
+tokio-postgres = { version = "0.7.12", optional = true }
+deadpool-postgres = { version = "0.14.0", optional = true }
+parsql = { path = "../", version = "0.1.0", features = [
+    "tokio-postgres",
+], default-features = false }
+parsql-macros = { path = "../parsql-macros", version = "0.1.0", features = [
+    "tokio-postgres",
+], default-features = false }
