@@ -3,7 +3,6 @@ use quote::quote;
 use regex::Regex;
 use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
-
 fn extract_fields_from_where_clause(input: &str) -> Vec<String> {
     let mut fields = Vec::new();
 
@@ -121,43 +120,6 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         })
         .collect::<String>();
 
-    let params_impl = if cfg!(feature = "sqlite") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn rusqlite::types::ToSql + Sync)> {
-                    let update_values: Vec<&(dyn rusqlite::types::ToSql + Sync)> = vec![#(&self.#field_names as &(dyn rusqlite::types::ToSql + Sync)),*];
-                    let condition_values: Vec<&(dyn rusqlite::types::ToSql + Sync)> = vec![#(&self.#condition_field_names as &(dyn rusqlite::types::ToSql + Sync)),*];
-
-                    [update_values, condition_values].concat()
-                }
-            }
-        }
-    } else if cfg!(feature = "postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
-                    let update_values: Vec<&(dyn postgres::types::ToSql + Sync)> = vec![#(&self.#field_names as &(dyn postgres::types::ToSql + Sync)),*];
-                    let condition_values: Vec<&(dyn postgres::types::ToSql + Sync)> = vec![#(&self.#condition_field_names as &(dyn postgres::types::ToSql + Sync)),*];
-
-                    [update_values, condition_values].concat()
-                }
-            }
-        }
-    } else if cfg!(feature = "tokio-postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
-                    let update_values: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![#(&self.#field_names as &(dyn tokio_postgres::types::ToSql + Sync)),*];
-                    let condition_values: Vec<&(dyn tokio_postgres::types::ToSql + Sync)> = vec![#(&self.#condition_field_names as &(dyn tokio_postgres::types::ToSql + Sync)),*];
-
-                    [update_values, condition_values].concat()
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
     let expanded = quote! {
         impl Updateable for #struct_name {
             fn table_name() -> &'static str {
@@ -177,7 +139,14 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        #params_impl
+        impl SqlParams for #struct_name {
+            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+                let update_values: Vec<&(dyn ToSql + Sync)> = vec![#(&self.#field_names as &(dyn ToSql + Sync)),*];
+                let condition_values: Vec<&(dyn ToSql + Sync)> = vec![#(&self.#condition_field_names as &(dyn ToSql + Sync)),*];
+
+                [update_values, condition_values].concat()
+            }
+        }
     };
 
     TokenStream::from(expanded)
@@ -217,34 +186,6 @@ pub fn derive_insertable_impl(input: TokenStream) -> TokenStream {
         .collect();
     let column_names = fields.iter().map(|f| f.as_str());
 
-    let params_impl = if cfg!(feature = "sqlite") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn rusqlite::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn rusqlite::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else if cfg!(feature = "postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn postgres::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else if cfg!(feature = "tokio-postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn tokio_postgres::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
     // Insertable implementation
     let expanded = quote! {
         impl Insertable for #struct_name {
@@ -257,7 +198,11 @@ pub fn derive_insertable_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        #params_impl
+        impl SqlParams for #struct_name {
+            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+                vec![#(&self.#field_names as &(dyn ToSql + Sync)),*]
+            }
+        }
     };
 
     TokenStream::from(expanded)
@@ -327,34 +272,6 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
         .map(|f| syn::Ident::new(f, struct_name.span()))
         .collect();
 
-    let params_impl = if cfg!(feature = "sqlite") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn rusqlite::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn rusqlite::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else if cfg!(feature = "postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn postgres::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else if cfg!(feature = "tokio-postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn tokio_postgres::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
     let expanded = quote! {
         impl Queryable for #struct_name {
             fn table_name() -> &'static str {
@@ -370,7 +287,11 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        #params_impl
+        impl SqlParams for #struct_name {
+            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+                vec![#(&self.#field_names as &(dyn ToSql + Sync)),*]
+            }
+        }
     };
 
     TokenStream::from(expanded)
@@ -438,34 +359,6 @@ pub fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .map(|f| syn::Ident::new(f, struct_name.span()))
         .collect();
 
-    let params_impl = if cfg!(feature = "sqlite") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn rusqlite::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn rusqlite::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else if cfg!(feature = "postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn postgres::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn postgres::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else if cfg!(feature = "tokio-postgres") {
-        quote! {
-            impl SqlParams for #struct_name {
-                fn params(&self) -> Vec<&(dyn tokio_postgres::types::ToSql + Sync)> {
-                    vec![#(&self.#field_names as &(dyn tokio_postgres::types::ToSql + Sync)),*]
-                }
-            }
-        }
-    } else {
-        quote! {}
-    };
-
     let expanded = quote! {
         impl Deleteable for #struct_name {
             fn table_name() -> &'static str {
@@ -477,7 +370,11 @@ pub fn derive_deletable_impl(input: TokenStream) -> TokenStream {
             }
         }
 
-        #params_impl
+        impl SqlParams for #struct_name {
+            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+                vec![#(&self.#field_names as &(dyn ToSql + Sync)),*]
+            }
+        }
     };
 
     TokenStream::from(expanded)

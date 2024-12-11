@@ -1,6 +1,6 @@
 use parsql::{macros::{Insertable, Updateable}, Insertable, Updateable};
 use parsql_sqlite::{insert, update, SqlParams};
-use rusqlite::Connection;
+use rusqlite::{Connection, types::ToSql};
 
 #[derive(Insertable)]
 #[table_name("users")]

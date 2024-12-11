@@ -1,5 +1,6 @@
 use parsql::{macros::Queryable, Queryable};
 use parsql_postgres::SqlParams;
+use tokio_postgres::types::ToSql;
 
 #[derive(Queryable, Debug)]
 #[table_name("users")]
@@ -31,25 +32,3 @@ pub struct GetAllUsers {
     pub email: String,
     pub state: i16,
 }
-
-// impl DataMapper<GetUser> for GetUser {
-//     fn to_model(row: &postgres::Row) -> Result<GetUser, postgres::Error> {
-//         Ok(GetUser {
-//             id: row.get(0),
-//             name: row.get(1),
-//             email: row.get(2),
-//             state: row.get(3),
-//         })
-//     }
-// }
-
-// impl DataMapper<GetAllUsers> for GetAllUsers {
-//     fn to_model(row: &postgres::Row) -> Result<GetAllUsers, postgres::Error> {
-//         Ok(GetAllUsers {
-//             id: row.get(0),
-//             name: row.get(1),
-//             email: row.get(2),
-//             state: row.get(3),
-//         })
-//     }
-// }

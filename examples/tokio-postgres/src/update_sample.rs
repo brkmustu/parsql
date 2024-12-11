@@ -1,5 +1,6 @@
 use parsql::{macros::Updateable, Updateable};
 use parsql_postgres::SqlParams;
+use tokio_postgres::types::ToSql;
 
 #[derive(Updateable)]
 #[table_name("users")]
