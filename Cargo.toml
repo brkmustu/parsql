@@ -1,11 +1,4 @@
-[package]
-name = "parsql"
-version = "0.1.0"
-edition = "2021"
-
 [workspace]
-package.authors = ["Mehmet Burak Muştu"]
-package.description = "Deneyimsel bir sql yardımcı küfesidir."
 resolver = "2"
 members = [
     "examples/deadpool-postgres",
@@ -16,6 +9,24 @@ members = [
     "parsql-postgres",
     "parsql-sqlite",
 ]
+
+[workspace.package]
+authors = ["Mehmet Burak Muştu"]
+description = "Deneyimsel bir sql yardımcı küfesidir."
+edition = "2021"
+categories = ["database", "asynchronous", "synchronous"]
+keywords = ["database", "async", "postgres", "sqlite"]
+repository = "https://github.com/yazdostum-nettr/parsql"
+version = "0.1.0"
+license = "MIT OR Apache-2.0"
+
+[package]
+name = "parsql"
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 [features]
 default = ["tokio-postgres"]

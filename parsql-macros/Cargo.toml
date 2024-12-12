@@ -1,7 +1,11 @@
 [package]
 name = "parsql-macros"
-version = "0.1.0"
-edition = "2021"
+description = "Parsql için yardımcı makroları barındıran küfedir."
+version.workspace = true
+license.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true
