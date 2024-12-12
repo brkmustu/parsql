@@ -6,12 +6,12 @@ edition = "2021"
 [features]
 default = []
 postgres = ["dep:postgres"]
-tokio-postgres = ["dep:postgres", "dep:tokio-postgres", "parsql-macros/tokio-postgres"]
+tokio-postgres = ["dep:postgres", "dep:tokio-postgres", "dep:parsql-macros"]
 deadpool-postgres = [
     "dep:postgres",
     "dep:tokio-postgres",
     "dep:deadpool-postgres",
-    "parsql-macros/tokio-postgres",
+    "dep:parsql-macros",
 ]
 
 [dependencies]
@@ -21,6 +21,4 @@ deadpool-postgres = { version = "0.14.0", optional = true }
 parsql = { path = "../", version = "0.1.0", features = [
     "tokio-postgres",
 ], default-features = false }
-parsql-macros = { path = "../parsql-macros", version = "0.1.0", features = [
-    "tokio-postgres",
-], default-features = false }
+parsql-macros = { path = "../parsql-macros", version = "0.1.0", optional = true }

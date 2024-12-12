@@ -18,11 +18,11 @@ members = [
 ]
 
 [features]
-default = ["postgres"]
-sqlite = ["parsql-macros/sqlite"]
-postgres = ["parsql-macros/postgres"]
-tokio-postgres = ["parsql-macros/tokio-postgres"]
-deadpool-postgres = ["parsql-macros/tokio-postgres"]
+default = ["tokio-postgres"]
+sqlite = ["parsql-macros"]
+postgres = ["parsql-macros"]
+tokio-postgres = ["parsql-macros"]
+deadpool-postgres = ["parsql-macros"]
 
 [dependencies]
 parsql-macros = { path = "parsql-macros", optional = true }
