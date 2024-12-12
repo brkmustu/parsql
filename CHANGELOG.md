@@ -17,6 +17,8 @@ All notable changes to this project will be documented in this file.
 
 - CHANGELOG.md güncellendi
 - CHANGELOG.md güncellendi.
+- Küfelerin dökümantasyonları için README.md dosyaları eklendi ve içerik eklendi.
+- Ana küfe için Cargo.toml dosyasına açıklama eklendi.
 
 ### ⚙️ Miscellaneous Tasks
 
