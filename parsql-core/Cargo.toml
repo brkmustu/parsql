@@ -3,7 +3,6 @@ name = "parsql-core"
 description = "Parsql için temel trait'leri barındıran küfedir."
 authors.workspace = true
 edition.workspace = true
-categories.workspace = true
 keywords.workspace = true
 repository.workspace = true
 version.workspace = true
