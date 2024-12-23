@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.1.1] - 2024-12-23
+## [unreleased]
 
 ### 🚀 Features
 
@@ -20,6 +20,7 @@ All notable changes to this project will be documented in this file.
 - CHANGELOG.md güncellendi.
 - Küfelerin dökümantasyonları için README.md dosyaları eklendi ve içerik eklendi.
 - Ana küfe için Cargo.toml dosyasına açıklama eklendi.
+- README.md dökümantasyonları yeni versiyona göre güncellendi.
 
 ### ⚙️ Miscellaneous Tasks
 
