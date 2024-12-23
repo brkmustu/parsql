@@ -9,8 +9,12 @@ repository.workspace = true
 
 [dependencies]
 rusqlite = { version = "0.32.1" }
-parsql-core = { path = "../parsql-core" }
-parsql-macros = { path = "../parsql-macros" }
+
+[dependencies.parsql-core]
+workspace = true
+
+[dependencies.parsql-macros]
+workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports"] }

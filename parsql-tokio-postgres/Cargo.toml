@@ -1,28 +1,27 @@
 [package]
 name = "parsql-tokio-postgres"
+description = "Parsql için postgresql entegrasyonunu, tokio runtime ile birlikte sağlayan küfedir."
 authors.workspace = true
-description.workspace = true
 edition.workspace = true
-categories.workspace = true
 keywords.workspace = true
 repository.workspace = true
 version.workspace = true
 license.workspace = true
 
 [features]
-default = ["dep:parsql-core", "dep:parsql-macros"]
-deadpool-postgres = [
-    "dep:parsql-core",
-    "dep:parsql-macros",
-    "dep:deadpool-postgres",
-]
+default = []
+deadpool-postgres = ["dep:deadpool-postgres"]
 
 [dependencies]
 postgres = { version = "0.19.9" }
 tokio-postgres = { version = "0.7.12" }
 deadpool-postgres = { version = "0.14.0", optional = true }
-parsql-core = { path = "../parsql-core", optional = true }
-parsql-macros = { path = "../parsql-macros", optional = true }
+
+[dependencies.parsql-core]
+workspace = true
+
+[dependencies.parsql-macros]
+workspace = true
 
 [dev-dependencies]
 criterion = { version = "0.5.1", features = ["html_reports", "async_tokio"] }
