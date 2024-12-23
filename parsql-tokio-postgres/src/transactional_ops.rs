@@ -1,8 +1,8 @@
-use crate::{Deleteable, Insertable, Retrievable, Updateable};
+use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
 use deadpool_postgres::Transaction;
 use tokio_postgres::{types::ToSql, Row, Error};
 
-use super::SqlParams;
+use crate::SqlParams;
 
 pub async fn tx_update<T: Updateable + SqlParams>(
     transaction: Transaction<'_>,

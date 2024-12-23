@@ -1,8 +1,8 @@
-use ex_tokio_pg::{
+use ex_parsql_tokio_pg::{
     delete_sample::DeleteUser, get_sample::GetUser, insert_sample::InsertUser,
     update_sample::UpdateUser,
 };
-use parsql_postgres::{delete, get, insert, update};
+use parsql::tokio_postgres::{delete, get, insert, update};
 use postgres::NoTls;
 
 #[tokio::main]

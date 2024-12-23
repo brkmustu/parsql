@@ -1,9 +1,7 @@
-use parsql::{Deleteable, Insertable, Queryable, Updateable};
-use tokio_postgres::{types::ToSql, Error, Row};
+use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
+use tokio_postgres::{Error, Row};
 
-pub trait SqlParams {
-    fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
-}
+use crate::SqlParams;
 
 pub async fn insert<T: Insertable + SqlParams>(
     client: &tokio_postgres::Client,
@@ -23,10 +21,7 @@ pub async fn insert<T: Insertable + SqlParams>(
 
     let params = entity.params();
 
-    match client.execute(&sql, &params).await {
-        Ok(_id) => Ok(_id),
-        Err(e) => Err(e),
-    }
+    client.execute(&sql, &params).await
 }
 
 pub async fn update<T: Updateable + SqlParams>(

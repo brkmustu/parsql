@@ -1,5 +1,4 @@
-use parsql::{macros::Queryable, Queryable};
-use parsql_postgres::SqlParams;
+use parsql::{core::Queryable, macros::Queryable, tokio_postgres::SqlParams};
 use tokio_postgres::types::ToSql;
 
 #[derive(Queryable, Debug)]

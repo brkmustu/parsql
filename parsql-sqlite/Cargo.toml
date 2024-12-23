@@ -9,5 +9,16 @@ repository.workspace = true
 
 [dependencies]
 rusqlite = { version = "0.32.1" }
-parsql = { path = "../", version = "0.1.0", features = ["sqlite"], default-features = false }
-parsql-macros = { path = "../parsql-macros", version = "0.1.0" }
+parsql-core = { path = "../parsql-core" }
+parsql-macros = { path = "../parsql-macros" }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+nanoid = "0.4.0"
+
+[[bench]]
+name = "sqlite_benches"
+harness = false
+
+[lints]
+workspace = true

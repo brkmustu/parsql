@@ -1,9 +1,8 @@
 [package]
-name = "sqlite"
+name = "ex_parsql_sqlite"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 rusqlite = "0.32.1"
-parsql = { path = "../../", version = "0.1.0", features = ["sqlite"] }
-parsql-sqlite = { path = "../../parsql-sqlite", version = "0.1.0" }
+parsql = { path = "../../", version = "0.1.1", features = ["sqlite"] }

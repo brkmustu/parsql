@@ -100,7 +100,6 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         .collect();
 
     let column_names = sorted_fields.iter().map(|f| f.as_str());
-    let condition_column_names = sorted_condition_fields.iter().map(|f| f.as_str());
 
     // Adjust the where_clause based on the number of updated columns
     let mut count = sorted_fields.len() + 1;
@@ -132,10 +131,6 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
 
             fn update_clause() -> &'static [&'static str] {
                 &[#(#column_names),*]
-            }
-
-            fn condition_columns() -> &'static [&'static str] {
-                &[#(#condition_column_names),*]
             }
         }
 

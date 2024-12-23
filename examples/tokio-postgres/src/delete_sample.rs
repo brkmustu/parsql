@@ -1,5 +1,4 @@
-use parsql::{macros::Deleteable, Deleteable};
-use parsql_postgres::SqlParams;
+use parsql::{core::Deleteable, macros::Deleteable, tokio_postgres::SqlParams};
 use tokio_postgres::types::ToSql;
 
 #[derive(Deleteable, Debug)]

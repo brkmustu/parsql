@@ -1,4 +1,4 @@
-use parsql::{Deleteable, Insertable, Queryable, Updateable};
+use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
 use rusqlite::{Error, Row, ToSql};
 
 pub trait SqlParams {
@@ -24,8 +24,8 @@ pub fn insert<T: Insertable + SqlParams>(
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 
     match conn.execute(&sql, _params.as_slice()) {
-        Ok(rows_affected) => Ok(rows_affected),
-        Err(e) => Err(e),
+        Ok(_result) => Ok(_result),
+        Err(_err) => panic!("Insert işlemi yürütme esnasında bir hata oluştu! {}", _err),
     }
 }
 

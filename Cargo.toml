@@ -1,13 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "examples/deadpool-postgres",
     "examples/postgres",
     "examples/sqlite",
     "examples/tokio-postgres",
+    "parsql-core",
     "parsql-macros",
     "parsql-postgres",
     "parsql-sqlite",
+    "parsql-tokio-postgres",
 ]
 
 [workspace.package]
@@ -17,25 +18,41 @@ edition = "2021"
 categories = ["database", "asynchronous", "synchronous"]
 keywords = ["database", "async", "postgres", "sqlite"]
 repository = "https://github.com/yazdostum-nettr/parsql"
-version = "0.1.0"
+version = "0.1.1"
 license = "MIT OR Apache-2.0"
 
 [package]
 name = "parsql"
+version = "0.1.1"
 description = "Deneyimsel bir sql yardımcı küfesidir. UYARI: bu bir ORM aracı değildir. Amaç sql yazımı ve kullanımında basit cümlecikler için kolaylık sağlamaktır."
-version.workspace = true
 license.workspace = true
 edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 
 [features]
-default = ["tokio-postgres"]
-sqlite = ["parsql-macros"]
-postgres = ["parsql-macros"]
-tokio-postgres = ["parsql-macros"]
-deadpool-postgres = ["parsql-macros"]
+default = []
+sqlite = ["dep:parsql-core", "dep:parsql-macros", "dep:parsql-sqlite"]
+postgres = ["dep:parsql-core", "dep:parsql-macros", "dep:parsql-postgres"]
+tokio-postgres = ["dep:parsql-core", "dep:parsql-macros", "parsql-tokio-postgres"]
+deadpool-postgres = ["dep:parsql-core", "dep:parsql-macros", "parsql-tokio-postgres/deadpool-postgres"]
+
+[workspace.dependencies]
+parsql-core = { path = "parsql-core", version = "0.1.1" }
+parsql-macros = { path = "parsql-macros", version = "0.1.1" }
+parsql-sqlite = { path = "parsql-sqlite", version = "0.1.1" }
+parsql-postgres = { path = "parsql-postgres", version = "0.1.1" }
+parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.1.1" }
 
 [dependencies]
-parsql-macros = { path = "parsql-macros", optional = true }
+parsql-core = { workspace = true, optional = true }
+parsql-macros = { workspace = true, optional = true }
+parsql-sqlite = { workspace = true, optional = true }
+parsql-postgres = { workspace = true, optional = true }
+parsql-tokio-postgres = { workspace = true, optional = true }
 
+[workspace.lints.clippy]
+cast_possible_truncation = 'deny'
+cast_possible_wrap = 'deny'
+cast_sign_loss = 'deny'
+disallowed_methods = 'deny'

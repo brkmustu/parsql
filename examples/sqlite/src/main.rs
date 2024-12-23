@@ -1,8 +1,8 @@
 use parsql::{
+    core::{Insertable, Queryable, Updateable},
     macros::{Insertable, Queryable, Updateable},
-    Insertable, Queryable, Updateable,
+    sqlite::{get, insert, update, SqlParams},
 };
-use parsql_sqlite::{get, insert, update, SqlParams};
 use rusqlite::{types::ToSql, Connection};
 
 #[derive(Insertable)]

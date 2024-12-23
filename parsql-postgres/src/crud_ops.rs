@@ -1,14 +1,11 @@
-use parsql::{Deleteable, Insertable, Queryable, Updateable};
-use postgres::{types::ToSql, Error, Row};
+use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
+use postgres::{types::ToSql, Client, Error, Row};
 
 pub trait SqlParams {
     fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
 }
 
-pub fn insert<T: Insertable + SqlParams>(
-    mut client: postgres::Client,
-    entity: T,
-) -> Result<u64, Error> {
+pub fn insert<T: Insertable + SqlParams>(client: &mut Client, entity: T) -> Result<u64, Error> {
     let table = T::table_name();
     let columns = T::columns().join(", ");
     let placeholders = (1..=T::columns().len())
@@ -23,10 +20,7 @@ pub fn insert<T: Insertable + SqlParams>(
 
     let params = entity.params();
 
-    match client.execute(&sql, &params) {
-        Ok(_id) => Ok(_id),
-        Err(e) => Err(e),
-    }
+    client.execute(&sql, &params)
 }
 
 pub fn update<T: Updateable + SqlParams>(
@@ -34,11 +28,11 @@ pub fn update<T: Updateable + SqlParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let table_name = T::table_name();
-    let columns = T::updated_columns();
+    let update_clause = T::update_clause();
     let where_clause = T::where_clause();
 
     // Sütunları "name = $1, age = $2" formatında birleştir
-    let update_clause = columns
+    let update_clause = update_clause
         .iter()
         .enumerate()
         .map(|(i, col)| format!("{} = ${}", col, i + 1))
@@ -84,7 +78,7 @@ where
     F: Fn(&Row) -> Result<R, Error>,
 {
     let table_name = T::table_name();
-    let select_clause = T::select_clause();
+    let select_clause = T::select_clause().join(", ");
     let where_clause = T::where_clause();
 
     let sql = format!(

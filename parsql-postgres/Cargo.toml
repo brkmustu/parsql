@@ -7,22 +7,14 @@ edition.workspace = true
 authors.workspace = true
 repository.workspace = true
 
-[features]
-default = []
-postgres = ["dep:postgres"]
-tokio-postgres = ["dep:postgres", "dep:tokio-postgres", "dep:parsql-macros"]
-deadpool-postgres = [
-    "dep:postgres",
-    "dep:tokio-postgres",
-    "dep:deadpool-postgres",
-    "dep:parsql-macros",
-]
-
 [dependencies]
-postgres = { version = "0.19.9", optional = true }
-tokio-postgres = { version = "0.7.12", optional = true }
-deadpool-postgres = { version = "0.14.0", optional = true }
-parsql = { path = "../", version = "0.1.0", features = [
-    "tokio-postgres",
-], default-features = false }
-parsql-macros = { path = "../parsql-macros", version = "0.1.0", optional = true }
+postgres = { version = "0.19.9" }
+parsql-core = { path = "../parsql-core"}
+parsql-macros = { path = "../parsql-macros" }
+
+[dev-dependencies]
+criterion = { version = "0.5.1", features = ["html_reports"] }
+
+[[bench]]
+name = "postgres_benches"
+harness = false
