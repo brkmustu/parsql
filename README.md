@@ -29,6 +29,13 @@ pub struct GetUser {
 
 gibi bir procedural makro kullanımı ile, desteklenen (şimdilik sqlite ve postgresql) veritabanlarında küfe'de tanımlanan "get" fonksiyonunu, bu "struct" için uygulayabilir hale getirmiş oluyoruz.
 
+yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 5 adet bağımlılık söz konusu;
+
+```rust
+use parsql::{core::Queryable, macros::Queryable, tokio_postgres::{get, SqlParams}};
+use tokio_postgres::types::ToSql;
+```
+
 Şunun gibi;
 
 ```rust

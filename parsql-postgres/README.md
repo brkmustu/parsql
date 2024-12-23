@@ -17,9 +17,8 @@ pub struct InsertUser {
 yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 5 adet bağımlılık söz konusu;
 
 ```rust
-use parsql::{macros::Insertable, Insertable};
-use parsql_postgres::{insert, SqlParams};
-use tokio_postgres::types::ToSql;
+use parsql::{core::Insertable, macros::Insertable, postgres::{insert, SqlParams}};
+use postgres::types::ToSql;
 ```
 
 bunlar mevcut küfede bulunan makro, trait ve generic fonksiyonlardan faydalanmanızı sağlayacak.

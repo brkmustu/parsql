@@ -1,6 +1,6 @@
-# parsql-sqlite
+# parsql-postgres
 
-parsql için sqlite entegrasyon küfesidir.
+parsql için postgres entegrasyon küfesidir.
 
 ### Genel Kullanım Örnekleri
 
@@ -17,8 +17,8 @@ pub struct InsertUser {
 yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 5 adet bağımlılık söz konusu;
 
 ```rust
-use parsql::{core::Insertable, macros::Insertable, sqlite::{insert, SqlParams}};
-use rusqlite::{types::ToSql};
+use parsql::{core::Insertable, macros::Insertable, tokio_postgres::{insert, SqlParams}};
+use tokio_postgres::types::ToSql;
 ```
 
 bunlar mevcut küfede bulunan makro, trait ve generic fonksiyonlardan faydalanmanızı sağlayacak.
