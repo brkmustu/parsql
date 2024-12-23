@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [unreleased]
+## [0.1.1] - 2024-12-23
 
 ### 🚀 Features
 
@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 
 - *(macros)* Makrolarda, compiler tarafında bir uyarı verilmesine sebep olan durum giderilip, 'ToSql' için çözüm netleştirildi.
 - *(macros)* Makroların 'features'leri ile ilgili düzenlemeler yapıldı.
+- 'parsql-core' küfesi oluşturularak trait'ler buraya taşındı, 'parsql-tokio-postgres' küfesi oluşturularak ilgili özellikler bu küfeye taşındı, ilgili küfelere benchmark'lar hazırlandı.
 
 ### 📚 Documentation
 
