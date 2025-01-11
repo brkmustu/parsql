@@ -1,10 +1,10 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use parsql_core::Insertable;
-use parsql_macros::Insertable;
+use parsql_macros::{Insertable, SqlParams};
 use parsql_tokio_postgres::{insert, SqlParams};
 use tokio_postgres::{types::ToSql, Client, NoTls};
 
-#[derive(Insertable)]
+#[derive(Insertable, SqlParams)]
 #[table_name("users")]
 pub struct InsertUser {
     pub name: String,

@@ -1,7 +1,7 @@
-use parsql::{core::Updateable, macros::Updateable, postgres::SqlParams};
+use parsql::{core::Updateable, macros::{UpdateParams, Updateable}, postgres::UpdateParams};
 use postgres::types::ToSql;
 
-#[derive(Updateable)]
+#[derive(Updateable, UpdateParams)]
 #[table_name("users")]
 #[update_clause("name, email")]
 #[where_clause("id = $")]

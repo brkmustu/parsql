@@ -21,3 +21,18 @@ pub fn derive_queryable(input: TokenStream) -> TokenStream {
 pub fn derive_deletable(input: TokenStream) -> TokenStream {
     crud_impl::derive_deletable_impl(input)
 }
+
+#[proc_macro_derive(SqlParams, attributes(where_clause))]
+pub fn derive_sql_params(input: TokenStream) -> TokenStream {
+    crud_impl::derive_sql_params_impl(input)
+}
+
+#[proc_macro_derive(UpdateParams, attributes(update_clause, where_clause))]
+pub fn derive_update_params(input: TokenStream) -> TokenStream {
+    crud_impl::derive_update_params_impl(input)
+}
+
+#[proc_macro_derive(FromRow)]
+pub fn derive_from_row(input: TokenStream) -> TokenStream {
+    crud_impl::derive_from_row(input)
+}

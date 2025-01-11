@@ -58,8 +58,6 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for `where_clause`")
         .value();
 
-    let condition_columns = extract_fields_from_where_clause(&where_clause);
-
     // Collecting fields from the struct
     let fields = if let syn::Data::Struct(data) = &input.data {
         if let syn::Fields::Named(fields) = &data.fields {
@@ -80,23 +78,6 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         .iter()
         .filter_map(|col| fields.iter().find(|field| *field == col))
         .cloned()
-        .collect();
-
-    // Sorting fields for `condition_columns`
-    let sorted_condition_fields: Vec<_> = condition_columns
-        .iter()
-        .filter_map(|col| fields.iter().find(|field| *field == col))
-        .cloned()
-        .collect();
-
-    // Generate field names for `updated_columns` and `condition_columns`
-    let field_names: Vec<_> = sorted_fields
-        .iter()
-        .map(|f| syn::Ident::new(f, struct_name.span()))
-        .collect();
-    let condition_field_names: Vec<_> = sorted_condition_fields
-        .iter()
-        .map(|f| syn::Ident::new(f, struct_name.span()))
         .collect();
 
     let column_names = sorted_fields.iter().map(|f| f.as_str());
@@ -133,15 +114,6 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
                 &[#(#column_names),*]
             }
         }
-
-        impl SqlParams for #struct_name {
-            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
-                let update_values: Vec<&(dyn ToSql + Sync)> = vec![#(&self.#field_names as &(dyn ToSql + Sync)),*];
-                let condition_values: Vec<&(dyn ToSql + Sync)> = vec![#(&self.#condition_field_names as &(dyn ToSql + Sync)),*];
-
-                [update_values, condition_values].concat()
-            }
-        }
     };
 
     TokenStream::from(expanded)
@@ -175,10 +147,6 @@ pub fn derive_insertable_impl(input: TokenStream) -> TokenStream {
         panic!("Insertable can only be derived for structs");
     };
 
-    let field_names: Vec<_> = fields
-        .iter()
-        .map(|f| syn::Ident::new(f, struct_name.span()))
-        .collect();
     let column_names = fields.iter().map(|f| f.as_str());
 
     // Insertable implementation
@@ -190,12 +158,6 @@ pub fn derive_insertable_impl(input: TokenStream) -> TokenStream {
 
             fn columns() -> &'static [&'static str] {
                 &[#(#column_names),*]
-            }
-        }
-
-        impl SqlParams for #struct_name {
-            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
-                vec![#(&self.#field_names as &(dyn ToSql + Sync)),*]
             }
         }
     };
@@ -261,12 +223,6 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
 
     let column_names = fields.iter().map(|f| f.as_str());
 
-    let field_names: Vec<_> = fields
-        .iter()
-        .filter(|&f| where_clause.contains(f))
-        .map(|f| syn::Ident::new(f, struct_name.span()))
-        .collect();
-
     let expanded = quote! {
         impl Queryable for #struct_name {
             fn table_name() -> &'static str {
@@ -279,12 +235,6 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
 
             fn where_clause() -> &'static str {
                 #adjusted_where_clause
-            }
-        }
-
-        impl SqlParams for #struct_name {
-            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
-                vec![#(&self.#field_names as &(dyn ToSql + Sync)),*]
             }
         }
     };
@@ -348,12 +298,6 @@ pub fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         })
         .collect::<String>();
 
-    let field_names: Vec<_> = fields
-        .iter()
-        .filter(|&f| where_clause.contains(f))
-        .map(|f| syn::Ident::new(f, struct_name.span()))
-        .collect();
-
     let expanded = quote! {
         impl Deleteable for #struct_name {
             fn table_name() -> &'static str {
@@ -364,10 +308,168 @@ pub fn derive_deletable_impl(input: TokenStream) -> TokenStream {
                 #adjusted_where_clause
             }
         }
+    };
 
+    TokenStream::from(expanded)
+}
+
+pub fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = &input.ident;
+
+    // where_clause özniteliğini opsiyonel olarak al
+    let where_clause = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("where_clause"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for where_clause")
+                .value()
+        });
+
+    let fields = if let Data::Struct(data) = &input.data {
+        if let Fields::Named(fields) = &data.fields {
+            fields
+                .named
+                .iter()
+                .map(|f| f.ident.as_ref().unwrap().to_string())
+                .collect::<Vec<_>>()
+        } else {
+            panic!("SqlParams can only be derived for structs with named fields");
+        }
+    } else {
+        panic!("SqlParams can only be derived for structs");
+    };
+
+    // where_clause varsa filtrele, yoksa tüm alanları kullan
+    let field_names: Vec<_> = match &where_clause {
+        Some(clause) => fields
+            .iter()
+            .filter(|&f| clause.contains(f))
+            .map(|f| syn::Ident::new(f, struct_name.span()))
+            .collect(),
+        None => fields
+            .iter()
+            .map(|f| syn::Ident::new(f, struct_name.span()))
+            .collect(),
+    };
+
+    let expanded = quote! {
         impl SqlParams for #struct_name {
             fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
                 vec![#(&self.#field_names as &(dyn ToSql + Sync)),*]
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+pub fn derive_update_params_impl(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let struct_name = &input.ident;
+
+    // update_clause özniteliğini al
+    let update_clause = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("update_clause"))
+        .expect("Missing `#[update_clause = \"...\"]` attribute")
+        .parse_args::<syn::LitStr>()
+        .expect("Expected a string literal for update_clause")
+        .value();
+
+    // where_clause özniteliğini al
+    let where_clause = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("where_clause"))
+        .expect("Missing `#[where_clause = \"...\"]` attribute")
+        .parse_args::<syn::LitStr>()
+        .expect("Expected a string literal for where_clause")
+        .value();
+
+    let fields = if let Data::Struct(data) = &input.data {
+        if let Fields::Named(fields) = &data.fields {
+            fields
+                .named
+                .iter()
+                .map(|f| f.ident.as_ref().unwrap().to_string())
+                .collect::<Vec<_>>()
+        } else {
+            panic!("UpdateParams can only be derived for structs with named fields");
+        }
+    } else {
+        panic!("UpdateParams can only be derived for structs");
+    };
+
+    // Güncelleme için kullanılacak alanları al
+    let update_fields: Vec<String> = update_clause
+        .split(',')
+        .map(|s| s.trim().to_string())
+        .collect();
+
+    // Where clause için kullanılacak alanları al
+    let condition_fields = extract_fields_from_where_clause(&where_clause);
+
+    // Alan isimlerini oluştur
+    let update_field_names: Vec<_> = update_fields
+        .iter()
+        .filter_map(|col| fields.iter().find(|field| *field == col))
+        .map(|f| syn::Ident::new(f, struct_name.span()))
+        .collect();
+
+    let condition_field_names: Vec<_> = condition_fields
+        .iter()
+        .filter_map(|col| fields.iter().find(|field| *field == col))
+        .map(|f| syn::Ident::new(f, struct_name.span()))
+        .collect();
+
+    let expanded = quote! {
+        impl UpdateParams for #struct_name {
+            fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+                let update_values: Vec<&(dyn ToSql + Sync)> = vec![#(&self.#update_field_names as &(dyn ToSql + Sync)),*];
+                let condition_values: Vec<&(dyn ToSql + Sync)> = vec![#(&self.#condition_field_names as &(dyn ToSql + Sync)),*];
+
+                [update_values, condition_values].concat()
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+pub fn derive_from_row(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+
+    // Sadece struct'ları işler.
+    let fields = if let Data::Struct(data_struct) = &input.data {
+        if let Fields::Named(fields) = &data_struct.fields {
+            &fields.named
+        } else {
+            panic!("FromRow yalnızca adlandırılmış alanlara sahip struct'lar için desteklenir.");
+        }
+    } else {
+        panic!("FromRow yalnızca struct'lar için desteklenir.");
+    };
+
+    // Alan adlarını ve tiplerini çıkarır.
+    let field_initializers = fields.iter().map(|field| {
+        let name = &field.ident;
+        quote! {
+            #name: row.get(stringify!(#name))
+        }
+    });
+
+    // Kod oluşturma
+    let expanded = quote! {
+        impl FromRow for #name {
+            fn from_row(row: &Row) -> Self {
+                Self {
+                    #(#field_initializers),*
+                }
             }
         }
     };

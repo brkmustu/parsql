@@ -1,10 +1,10 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use parsql_core::Insertable;
-use parsql_macros::Insertable;
+use parsql_macros::{Insertable, SqlParams};
 use parsql_sqlite::{insert, SqlParams};
 use rusqlite::{types::ToSql, Connection};
 
-#[derive(Insertable)]
+#[derive(Insertable, SqlParams)]
 #[table_name("users")]
 pub struct InsertUser {
     pub name: String,

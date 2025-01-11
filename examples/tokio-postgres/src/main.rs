@@ -46,15 +46,7 @@ async fn main() {
     println!("Delete result: {:?}", delete_result);
 
     let get_user = GetUser::new(72311);
-    let get_result = get(&client, get_user, |row| {
-        Ok(GetUser {
-            id: row.get(0),
-            name: row.get(1),
-            email: row.get(2),
-            state: row.get(3),
-        })
-    })
-    .await;
+    let get_result = get(&client, get_user).await;
 
     println!("Get result: {:?}", get_result);
 }

@@ -1,11 +1,11 @@
 use parsql::{
     core::{Insertable, Queryable, Updateable},
-    macros::{Insertable, Queryable, Updateable},
-    sqlite::{get, insert, update, SqlParams},
+    macros::{FromRow, Insertable, Queryable, SqlParams, UpdateParams, Updateable},
+    sqlite::{get, insert, update, FromRow, SqlParams, UpdateParams},
 };
-use rusqlite::{types::ToSql, Connection};
+use rusqlite::{types::ToSql, Connection, Row};
 
-#[derive(Insertable)]
+#[derive(Insertable, SqlParams)]
 #[table_name("users")]
 pub struct InsertUser {
     pub name: String,
@@ -13,7 +13,7 @@ pub struct InsertUser {
     pub state: i16,
 }
 
-#[derive(Updateable)]
+#[derive(Updateable, UpdateParams)]
 #[table_name("users")]
 #[update_clause("name, email")]
 #[where_clause("id = $")]
@@ -24,7 +24,7 @@ pub struct UpdateUser {
     pub state: i16,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table_name("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
@@ -65,14 +65,7 @@ fn main() {
         state: Default::default(),
     };
 
-    let get_user_result = get(&conn, get_user, |row| {
-        Ok(GetUser {
-            id: row.get("id").unwrap(),
-            name: row.get("name").unwrap(),
-            email: row.get("email").unwrap(),
-            state: row.get("state").unwrap(),
-        })
-    });
+    let get_user_result = get(&conn, get_user);
 
     println!("get user result: {:?}", get_user_result);
 }

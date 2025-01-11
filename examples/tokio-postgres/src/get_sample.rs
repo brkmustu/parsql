@@ -1,7 +1,11 @@
-use parsql::{core::Queryable, macros::Queryable, tokio_postgres::SqlParams};
-use tokio_postgres::types::ToSql;
+use parsql::{
+    core::Queryable,
+    macros::{FromRow, Queryable, SqlParams},
+    tokio_postgres::{FromRow, SqlParams},
+};
+use tokio_postgres::{types::ToSql, Row};
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table_name("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
@@ -22,7 +26,7 @@ impl GetUser {
     }
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, FromRow, Debug)]
 #[table_name("users")]
 #[where_clause("email = $")]
 pub struct GetAllUsers {

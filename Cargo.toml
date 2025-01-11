@@ -18,7 +18,7 @@ edition = "2021"
 categories = ["database", "asynchronous", "synchronous"]
 keywords = ["database", "async", "postgres", "sqlite"]
 repository = "https://github.com/yazdostum-nettr/parsql"
-version = "0.1.1"
+version = "0.1.2"
 license = "MIT OR Apache-2.0"
 
 [package]
@@ -32,21 +32,21 @@ repository.workspace = true
 
 [features]
 default = []
-sqlite = ["dep:parsql-core", "dep:parsql-macros", "dep:parsql-sqlite"]
-postgres = ["dep:parsql-core", "dep:parsql-macros", "dep:parsql-postgres"]
-tokio-postgres = ["dep:parsql-core", "dep:parsql-macros", "parsql-tokio-postgres"]
-deadpool-postgres = ["dep:parsql-core", "dep:parsql-macros", "parsql-tokio-postgres/deadpool-postgres"]
+sqlite = ["dep:parsql-sqlite"]
+postgres = ["dep:parsql-postgres"]
+tokio-postgres = ["parsql-tokio-postgres"]
+deadpool-postgres = ["parsql-tokio-postgres/deadpool-postgres"]
 
 [workspace.dependencies]
-parsql-core = { path = "parsql-core", version = "0.1.1" }
-parsql-macros = { path = "parsql-macros", version = "0.1.1" }
-parsql-sqlite = { path = "parsql-sqlite", version = "0.1.1" }
-parsql-postgres = { path = "parsql-postgres", version = "0.1.1" }
-parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.1.1" }
+parsql-core = { path = "parsql-core", version = "0.1.2" }
+parsql-macros = { path = "parsql-macros", version = "0.1.2" }
+parsql-sqlite = { path = "parsql-sqlite", version = "0.1.2" }
+parsql-postgres = { path = "parsql-postgres", version = "0.1.2" }
+parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.1.2" }
 
 [dependencies]
-parsql-core = { workspace = true, optional = true }
-parsql-macros = { workspace = true, optional = true }
+parsql-core = { workspace = true }
+parsql-macros = { workspace = true }
 parsql-sqlite = { workspace = true, optional = true }
 parsql-postgres = { workspace = true, optional = true }
 parsql-tokio-postgres = { workspace = true, optional = true }

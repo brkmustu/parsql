@@ -5,6 +5,14 @@ pub trait SqlParams {
     fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
 }
 
+pub trait UpdateParams {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
+}
+
+pub trait FromRow {
+    fn from_row(row: &Row) -> Self;
+}
+
 pub fn insert<T: Insertable + SqlParams>(client: &mut Client, entity: T) -> Result<u64, Error> {
     let table = T::table_name();
     let columns = T::columns().join(", ");
@@ -23,8 +31,8 @@ pub fn insert<T: Insertable + SqlParams>(client: &mut Client, entity: T) -> Resu
     client.execute(&sql, &params)
 }
 
-pub fn update<T: Updateable + SqlParams>(
-    mut client: postgres::Client,
+pub fn update<T: Updateable + UpdateParams>(
+    client: &mut postgres::Client,
     entity: T,
 ) -> Result<u64, Error> {
     let table_name = T::table_name();
@@ -53,7 +61,7 @@ pub fn update<T: Updateable + SqlParams>(
 }
 
 pub fn delete<T: Deleteable + SqlParams>(
-    mut client: postgres::Client,
+    client: &mut postgres::Client,
     entity: T,
 ) -> Result<u64, Error> {
     let table_name = T::table_name();
@@ -69,13 +77,37 @@ pub fn delete<T: Deleteable + SqlParams>(
     }
 }
 
-pub fn get<T: Queryable + SqlParams, F, R>(
-    mut client: postgres::Client,
+pub fn get<T: Queryable + FromRow + SqlParams>(
+    client: &mut postgres::Client,
+    entity: T,
+) -> Result<T, Error>
+{
+    let table_name = T::table_name();
+    let select_clause = T::select_clause().join(", ");
+    let where_clause = T::where_clause();
+
+    let sql = format!(
+        "SELECT {} FROM {} WHERE {}",
+        select_clause, table_name, where_clause
+    );
+
+    let params = entity.params();
+
+    let query = client.prepare(&sql).unwrap();
+
+    match client.query_one(&query, &params) {
+        Ok(row) => Ok(T::from_row(&row)),
+        Err(e) => Err(e),
+    }
+}
+
+pub fn select<T: Queryable + SqlParams, F>(
+    client: &mut postgres::Client,
     entity: T,
     to_model: F,
-) -> Result<R, Error>
+) -> Result<T, Error>
 where
-    F: Fn(&Row) -> Result<R, Error>,
+    F: Fn(&Row) -> Result<T, Error>,
 {
     let table_name = T::table_name();
     let select_clause = T::select_clause().join(", ");

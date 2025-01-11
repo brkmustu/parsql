@@ -1,5 +1,7 @@
-use example_parsql_postgres::{InsertUser, UpdateUser};
-use parsql::postgres::{insert, update};
+use std::default;
+
+use example_parsql_postgres::{InsertUser, SelectUser, UpdateUser};
+use parsql::postgres::{insert, select, update};
 use postgres::{Client, NoTls};
 
 fn init_connection() -> Client {
@@ -40,6 +42,25 @@ fn main() {
         state: 2,
     };
 
-    let result = update(db, update_usert);
+    let result = update(&mut db, update_usert);
+
     println!("Update result: {:?}", result);
+
+    let select_user = SelectUser {
+        id: 72306,
+        name: default::Default::default(),
+        email: default::Default::default(),
+        state: default::Default::default(),
+    };
+
+    let select_result = select(&mut db, select_user, |row| {
+        Ok(SelectUser{
+            id: row.get(0),
+            name: row.get(1),
+            email: row.get(2),
+            state: row.get(3),
+        })
+    });
+
+    println!("Select result: {:?}", select_result);
 }

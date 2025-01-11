@@ -1,12 +1,22 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use parsql_core::Insertable;
-use parsql_macros::Insertable;
-use parsql_postgres::{insert, SqlParams};
-use postgres::{types::ToSql, Client, NoTls};
+use parsql_core::{Insertable, Queryable};
+use parsql_macros::{Insertable, FromRow, Queryable, SqlParams};
+use parsql_postgres::{ get, insert, select, FromRow, SqlParams};
+use postgres::{types::ToSql, Client, NoTls, Row};
 
-#[derive(Insertable)]
+#[derive(Insertable, SqlParams)]
 #[table_name("users")]
 pub struct InsertUser {
+    pub name: String,
+    pub email: String,
+    pub state: i16,
+}
+
+#[derive(Queryable, FromRow, SqlParams)]
+#[table_name("users")]
+#[where_clause("id = $")]
+pub struct GetUser{
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub state: i16,
@@ -42,6 +52,18 @@ fn criterion_benchmark(c: &mut Criterion) {
                 state: 1,
             });
             let _ = insert(&mut db, user);
+        })
+    });
+
+    c.bench_function("postgres-select user", |b| {
+        b.iter(|| {
+            let user = black_box(GetUser {
+                id: 1,
+                name: "SampleName".to_string(),
+                email: "SampleEmail".to_string(),
+                state: 1,
+            });
+            let _ = get(&mut db, user);
         })
     });
 }

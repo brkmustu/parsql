@@ -19,3 +19,4 @@ pub trait Queryable {
     fn select_clause() -> &'static [&'static str];
     fn where_clause() -> &'static str;
 }
+

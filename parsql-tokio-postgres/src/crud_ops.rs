@@ -1,7 +1,7 @@
 use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
 use tokio_postgres::{Error, Row};
 
-use crate::SqlParams;
+use crate::{SqlParams, UpdateParams, FromRow};
 
 pub async fn insert<T: Insertable + SqlParams>(
     client: &tokio_postgres::Client,
@@ -24,7 +24,7 @@ pub async fn insert<T: Insertable + SqlParams>(
     client.execute(&sql, &params).await
 }
 
-pub async fn update<T: Updateable + SqlParams>(
+pub async fn update<T: Updateable + UpdateParams>(
     client: &tokio_postgres::Client,
     entity: T,
 ) -> Result<bool, Error> {
@@ -70,13 +70,52 @@ pub async fn delete<T: Deleteable + SqlParams>(
     }
 }
 
-pub async fn get<T: Queryable + SqlParams, F, R>(
+pub async fn get<T: Queryable + FromRow + SqlParams>(
+    client: &tokio_postgres::Client,
+    entity: T,
+) -> Result<T, Error>
+{
+    let table = T::table_name();
+    let columns = T::select_clause().join(", ");
+    let where_clause = T::where_clause();
+
+    let sql = format!("SELECT {} FROM {} WHERE {}", columns, table, where_clause);
+
+    let params = entity.params();
+
+    match client.query_one(&sql, &params).await {
+        Ok(_row) => Ok(T::from_row(&_row)),
+        Err(e) => Err(e),
+    }
+}
+
+pub async fn get_all<T: Queryable + FromRow + SqlParams>(
+    client: &tokio_postgres::Client,
+    entity: T,
+) -> Result<Vec<T>, Error>
+{
+    let table = T::table_name();
+    let columns = T::select_clause().join(", ");
+    let where_clause = T::where_clause();
+
+    let sql = format!("SELECT {} FROM {} WHERE {}", columns, table, where_clause);
+
+    let params = entity.params();
+
+    let rows = client.query(&sql, &params).await?;
+
+    let all_datas: Vec<T> = rows.iter().map(|row| T::from_row(row)).collect();
+
+    Ok(all_datas)
+}
+
+pub async fn select<T: Queryable + SqlParams, F>(
     client: &tokio_postgres::Client,
     entity: T,
     to_model: F,
-) -> Result<R, Error>
+) -> Result<T, Error>
 where
-    F: Fn(&Row) -> Result<R, Error>,
+    F: Fn(&Row) -> Result<T, Error>,
 {
     let table = T::table_name();
     let columns = T::select_clause().join(", ");
@@ -92,13 +131,13 @@ where
     }
 }
 
-pub async fn get_all<T: Queryable + SqlParams, F, R>(
+pub async fn select_all<T: Queryable + SqlParams, F>(
     client: &tokio_postgres::Client,
     entity: T,
     to_model: F,
-) -> Result<Vec<R>, Error>
+) -> Result<Vec<T>, Error>
 where
-    F: Fn(&Row) -> Result<R, Error>,
+    F: Fn(&Row) -> T,
 {
     let table = T::table_name();
     let columns = T::select_clause().join(", ");
@@ -110,7 +149,8 @@ where
 
     let rows = client.query(&sql, &params).await?;
 
-    let all_datas: Vec<R> = rows.iter().map(|row| to_model(row).unwrap()).collect();
+    let all_datas: Vec<T> = rows.iter().map(|row| to_model(row)).collect();
 
     Ok(all_datas)
 }
+
