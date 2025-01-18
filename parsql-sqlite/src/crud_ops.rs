@@ -10,7 +10,7 @@ pub trait UpdateParams {
 }
 
 pub trait FromRow {
-    fn from_row(row: &Row) -> Self;
+    fn from_row(row: &Row) -> Result<Self, Error> where Self: Sized;
 }
 
 pub fn insert<T: Insertable + SqlParams>(
@@ -86,8 +86,7 @@ pub fn delete<T: Deleteable + SqlParams>(
 pub fn get<T: Queryable + FromRow + SqlParams>(
     conn: &rusqlite::Connection,
     entity: T,
-) -> Result<T, Error>
-{
+) -> Result<T, Error> {
     let table_name = T::table_name();
     let select_clause = T::select_clause().join(", ");
     let where_clause = T::where_clause();
@@ -99,31 +98,24 @@ pub fn get<T: Queryable + FromRow + SqlParams>(
 
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 
-    match conn.query_row(&sql, _params.as_slice(), |row| Ok(T::from_row(row))) {
-        Ok(row) => Ok(row),
-        Err(e) => Err(e),
-    }
+    conn.query_row(&sql, _params.as_slice(), |row| T::from_row(row))
 }
 
-pub fn get_all<T: Queryable + FromRow + SqlParams, F>(
+pub fn get_all<T: Queryable + FromRow + SqlParams>(
     conn: &rusqlite::Connection,
     entity: T,
-) -> Result<Vec<T>, Error>
-{
+) -> Result<Vec<T>, Error> {
     let table = T::table_name();
     let columns = T::select_clause().join(", ");
     let where_clause = T::where_clause();
 
     let sql = format!("SELECT {} FROM {} WHERE {}", columns, table, where_clause);
-
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
+    let mut stmt = conn.prepare(&sql)?;
 
-    let mut stmt = conn.prepare(&sql).unwrap();
-
-    stmt.query_map(_params.as_slice(), |row| Ok(T::from_row(row)))
-        .map(|iter| iter.collect::<Result<Vec<T>, _>>())
-        .map_err(|err| println!("{:?}", err))
-        .unwrap()
+    let rows = stmt.query_map(_params.as_slice(), |row| T::from_row(row))?;
+    let results = rows.collect::<Result<Vec<_>, _>>()?;
+    Ok(results)
 }
 
 pub fn select<T: Queryable + SqlParams, F>(

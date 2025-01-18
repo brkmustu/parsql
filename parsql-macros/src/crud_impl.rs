@@ -19,7 +19,7 @@ fn extract_fields_from_where_clause(input: &str) -> Vec<String> {
     fields
 }
 
-pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -119,7 +119,7 @@ pub fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn derive_insertable_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -242,7 +242,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn derive_deletable_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -313,7 +313,7 @@ pub fn derive_deletable_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -366,7 +366,7 @@ pub fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn derive_update_params_impl(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
@@ -440,7 +440,40 @@ pub fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn derive_from_row(input: TokenStream) -> TokenStream {
+pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as DeriveInput);
+    let name = &input.ident;
+    
+    let fields = match &input.data {
+        Data::Struct(data) => {
+            match &data.fields {
+                Fields::Named(fields) => fields,
+                _ => panic!("Sadece named fields destekleniyor"),
+            }
+        },
+        _ => panic!("Sadece struct'lar destekleniyor"),
+    };
+    
+    let field_names = fields.named.iter()
+        .map(|f| f.ident.as_ref().unwrap());
+        
+    let field_strings = fields.named.iter()
+        .map(|f| f.ident.as_ref().unwrap().to_string());
+    
+    let expanded = quote! {
+        impl FromRow for #name {
+            fn from_row(row: &Row) -> Result<Self, Error> {
+                Ok(Self {
+                    #(#field_names: row.get(#field_strings)?),*
+                })
+            }
+        }
+    };
+    
+    TokenStream::from(expanded)
+}
+
+pub(crate) fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
 

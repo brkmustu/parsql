@@ -34,5 +34,9 @@ pub fn derive_update_params(input: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
-    crud_impl::derive_from_row(input)
+    if cfg!(feature = "sqlite") {
+        crud_impl::derive_from_row_sqlite(input)
+    } else {
+        crud_impl::derive_from_row_postgres(input)
+    }
 }

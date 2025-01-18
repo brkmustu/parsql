@@ -3,7 +3,7 @@ use parsql::{
     macros::{FromRow, Insertable, Queryable, SqlParams, UpdateParams, Updateable},
     sqlite::{get, insert, update, FromRow, SqlParams, UpdateParams},
 };
-use rusqlite::{types::ToSql, Connection, Row};
+use rusqlite::{types::ToSql, Connection, Row, Result, Error};
 
 #[derive(Insertable, SqlParams)]
 #[table_name("users")]

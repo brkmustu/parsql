@@ -16,3 +16,9 @@ quote = "1.0.37"
 proc-macro2 = "1.0.92"
 regex = "1.11.1"
 
+[features]
+default = []
+sqlite = []
+postgres = []
+tokio-postgres = []
+deadpool-postgres = []

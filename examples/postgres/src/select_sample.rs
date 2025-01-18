@@ -3,7 +3,7 @@ use parsql::{
     macros::{Queryable, FromRow, SqlParams},
     postgres::{FromRow, SqlParams},
 };
-use postgres::{types::ToSql, Row};
+use postgres::{types::ToSql, Row, Error};
 
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table_name("users")]

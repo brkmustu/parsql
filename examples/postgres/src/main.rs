@@ -46,6 +46,8 @@ fn main() {
 
     println!("Update result: {:?}", result);
 
+    
+
     let select_user = SelectUser {
         id: 72306,
         name: default::Default::default(),
