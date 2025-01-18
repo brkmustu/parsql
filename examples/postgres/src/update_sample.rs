@@ -1,4 +1,8 @@
-use parsql::{core::Updateable, macros::{UpdateParams, Updateable}, postgres::UpdateParams};
+use parsql::{
+    core::Updateable,
+    macros::{UpdateParams, Updateable},
+    postgres::UpdateParams,
+};
 use postgres::types::ToSql;
 
 #[derive(Updateable, UpdateParams)]

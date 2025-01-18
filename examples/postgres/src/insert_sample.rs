@@ -1,4 +1,8 @@
-use parsql::{core::Insertable, macros::{Insertable, SqlParams}, postgres::SqlParams};
+use parsql::{
+    core::Insertable,
+    macros::{Insertable, SqlParams},
+    postgres::SqlParams,
+};
 use postgres::types::ToSql;
 
 #[derive(Insertable, SqlParams)]

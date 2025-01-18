@@ -1,11 +1,11 @@
 use parsql::{
     core::Queryable,
-    macros::{Queryable, FromRow, SqlParams},
-    postgres::{FromRow, SqlParams},
+    macros::{Queryable, SqlParams},
+    postgres::SqlParams,
 };
-use postgres::{types::ToSql, Row, Error};
+use postgres::types::ToSql;
 
-#[derive(Queryable, FromRow, SqlParams, Debug)]
+#[derive(Queryable, SqlParams, Debug)]
 #[table_name("users")]
 #[where_clause("id = $")]
 pub struct SelectUser {

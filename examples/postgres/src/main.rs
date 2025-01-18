@@ -35,21 +35,19 @@ fn main() {
     let insert_result = insert(&mut db, insert_user);
     println!("Insert result: {:?}", insert_result);
 
-    let update_usert = UpdateUser {
-        id: 72306,
+    let update_user = UpdateUser {
+        id: 24025,
         name: String::from("Ali"),
         email: String::from("ali@gmail.com"),
         state: 2,
     };
 
-    let result = update(&mut db, update_usert);
+    let result = update(&mut db, update_user);
 
     println!("Update result: {:?}", result);
 
-    
-
     let select_user = SelectUser {
-        id: 72306,
+        id: 24025,
         name: default::Default::default(),
         email: default::Default::default(),
         state: default::Default::default(),
