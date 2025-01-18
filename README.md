@@ -40,7 +40,7 @@ impl GetUser {
 
 gibi bir procedural makro kullanımı ile, desteklenen (şimdilik sqlite ve postgresql) veritabanlarında küfe'de tanımlanan "get" fonksiyonunu, bu "struct" için uygulayabilir hale getirmiş oluyoruz.
 
-yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 5 adet bağımlılık söz konusu;
+yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 8 adet bağımlılık söz konusu (aslında sadece get işleminde bu kadar çok bağımlılık var, diğerlerinde 5 adet bağımlılık ile generic fonksiyon kullanılabiliyor);
 
 ```rust
 use parsql::{
