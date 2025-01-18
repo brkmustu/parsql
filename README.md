@@ -6,7 +6,7 @@ Deneyimsel sql yardımcısı
 Uygulamanıza küfeyi yüklerken hangi veritabanı ile çalışacağınızı 'feature' olarak belirtmeniz gerekiyor. Örneğin 'postgresql' ile çalışacaksanız ve 'tokio' runtime kullanıyorsanız, Cargo.toml dosyanıza paketi aşağıdaki şekilde eklemeniz gerekiyor;
 
 ```rust
-parsql = { version = "0.1.1", features = ["tokio-postgres"] }
+parsql = { version = "0.2.0", features = ["tokio-postgres"] }
 ```
 
 ### Ne işe yarar?
@@ -16,7 +16,7 @@ Temel sql cümleciklerinin direkt "struct" üzerinden yönetilebilmesini sağlay
 Örneğin;
 
 ```rust
-#[derive(Queryable, Debug)]
+#[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table_name("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
@@ -25,6 +25,17 @@ pub struct GetUser {
     pub email: String,
     pub state: i16,
 }
+
+impl GetUser {
+    pub fn new(id: i64) -> Self {
+        Self {
+            id,
+            name: Default::default(),
+            email: Default::default(),
+            state: Default::default(),
+        }
+    }
+}
 ```
 
 gibi bir procedural makro kullanımı ile, desteklenen (şimdilik sqlite ve postgresql) veritabanlarında küfe'de tanımlanan "get" fonksiyonunu, bu "struct" için uygulayabilir hale getirmiş oluyoruz.
@@ -32,21 +43,19 @@ gibi bir procedural makro kullanımı ile, desteklenen (şimdilik sqlite ve post
 yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 5 adet bağımlılık söz konusu;
 
 ```rust
-use parsql::{core::Queryable, macros::Queryable, tokio_postgres::{get, SqlParams}};
-use tokio_postgres::types::ToSql;
+use parsql::{
+    core::Queryable,
+    macros::{FromRow, Queryable, SqlParams},
+    tokio_postgres::{FromRow, SqlParams},
+};
+use tokio_postgres::{types::ToSql, Row};
 ```
 
 Şunun gibi;
 
 ```rust
-    let get_user_result = get(&conn, get_user, |row| {
-        Ok(GetUser {
-            id: row.get("id").unwrap(),
-            name: row.get("name").unwrap(),
-            email: row.get("email").unwrap(),
-            state: row.get("state").unwrap(),
-        })
-    });
+    let get_user = GetUser::new(1);
+    let get_result = get(&client, get_user).await;
 
     println!("get user result: {:?}", get_user_result);
 ```
