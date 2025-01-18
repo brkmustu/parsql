@@ -12,6 +12,7 @@ All notable changes to this project will be documented in this file.
 ### 📚 Documentation
 
 - README.md dökümantasyonları yeni versiyona göre güncellendi.
+- CHANGELOG.md düzenlendi
 
 ## [0.1.1] - 2024-12-23
 
