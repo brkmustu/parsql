@@ -4,7 +4,6 @@ members = [
     "examples/postgres",
     "examples/sqlite",
     "examples/tokio-postgres",
-    "parsql-core",
     "parsql-macros",
     "parsql-postgres",
     "parsql-sqlite",
@@ -18,12 +17,12 @@ edition = "2021"
 categories = ["database", "asynchronous", "synchronous"]
 keywords = ["database", "async", "postgres", "sqlite"]
 repository = "https://github.com/yazdostum-nettr/parsql"
-version = "0.2.0"
+version = "0.3.0"
 license = "MIT OR Apache-2.0"
 
 [package]
 name = "parsql"
-version = "0.2.0"
+version = "0.3.0"
 description = "Deneyimsel bir sql yardımcı küfesidir. UYARI: bu bir ORM aracı değildir. Amaç sql yazımı ve kullanımında basit cümlecikler için kolaylık sağlamaktır."
 license.workspace = true
 edition.workspace = true
@@ -41,14 +40,12 @@ deadpool-postgres = [
 ]
 
 [workspace.dependencies]
-parsql-core = { path = "parsql-core", workspace = true }
 parsql-macros = { path = "parsql-macros", workspace = true }
 parsql-sqlite = { path = "parsql-sqlite", workspace = true }
 parsql-postgres = { path = "parsql-postgres", workspace = true }
 parsql-tokio-postgres = { path = "parsql-tokio-postgres", workspace = true }
 
 [dependencies]
-parsql-core = { workspace = true }
 parsql-macros = { workspace = true }
 parsql-sqlite = { workspace = true, optional = true }
 parsql-postgres = { workspace = true, optional = true }

@@ -1,7 +1,6 @@
 use parsql::{
-    core::{Insertable, Queryable, Updateable},
     macros::{FromRow, Insertable, Queryable, SqlParams, UpdateParams, Updateable},
-    sqlite::{get, insert, update, FromRow, SqlParams, UpdateParams},
+    sqlite::{get, insert, update, FromRow, SqlParams, UpdateParams, SqlQuery},
 };
 use rusqlite::{types::ToSql, Connection, Row, Result, Error};
 

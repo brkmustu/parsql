@@ -1,8 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use parsql_core::{Insertable, Queryable};
 use parsql_macros::{Insertable, FromRow, Queryable, SqlParams};
-use parsql_postgres::{ get, insert, FromRow, SqlParams};
-use postgres::{types::ToSql, Client, NoTls, Row};
+use parsql_postgres::{ get, insert, FromRow, SqlParams, SqlQuery};
+use postgres::{types::ToSql, Client, NoTls, Row, Error};
 
 #[derive(Insertable, SqlParams)]
 #[table_name("users")]

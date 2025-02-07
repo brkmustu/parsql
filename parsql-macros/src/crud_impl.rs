@@ -100,18 +100,22 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         })
         .collect::<String>();
 
+    let update = column_names
+        .into_iter()
+        .enumerate()
+        .map(|(i, col)| format!("{} = ${}", col, i + 1))
+        .collect::<Vec<_>>()
+        .join(", ");
+
     let expanded = quote! {
-        impl Updateable for #struct_name {
-            fn table_name() -> &'static str {
-                #table_name
-            }
-
-            fn where_clause() -> &'static str {
-                #adjusted_where_clause
-            }
-
-            fn update_clause() -> &'static [&'static str] {
-                &[#(#column_names),*]
+        impl SqlQuery for #struct_name {
+            fn query() -> String {
+                format!(
+                    "UPDATE {} SET {} WHERE {}",
+                    #table_name,
+                    #update,
+                    #adjusted_where_clause
+                )
             }
         }
     };
@@ -147,17 +151,25 @@ pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
         panic!("Insertable can only be derived for structs");
     };
 
-    let column_names = fields.iter().map(|f| f.as_str());
+    let column_names = fields.iter().map(|f| f.as_str()).collect::<Vec<_>>();
+
+    let columns = column_names.clone().join(", ");
+
+    let placeholders = (1..=column_names.len())
+        .map(|i| format!("${}", i))
+        .collect::<Vec<_>>()
+        .join(", ");
 
     // Insertable implementation
     let expanded = quote! {
-        impl Insertable for #struct_name {
-            fn table_name() -> &'static str {
-                #table_name
-            }
-
-            fn columns() -> &'static [&'static str] {
-                &[#(#column_names),*]
+        impl SqlQuery for #struct_name {
+            fn query() -> String {
+                format!(
+                    "INSERT INTO {} ({}) VALUES ({})",
+                    #table_name,
+                    #columns,
+                    #placeholders
+                )
             }
         }
     };
@@ -221,20 +233,35 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
         })
         .collect::<String>();
 
-    let column_names = fields.iter().map(|f| f.as_str());
+    // Opsiyonel select özniteliğini al
+    let select = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("select_clause"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for select_clause")
+                .value()
+        });
+
+    // Eğer select tanımlanmamışsa, tüm alanları kullan
+    let select = select.unwrap_or_else(|| {
+        fields
+            .iter()
+            .map(|f| f.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    });
 
     let expanded = quote! {
-        impl Queryable for #struct_name {
-            fn table_name() -> &'static str {
-                #table_name
-            }
-
-            fn select_clause() -> &'static [&'static str] {
-                &[#(#column_names),*]
-            }
-
-            fn where_clause() -> &'static str {
-                #adjusted_where_clause
+        impl SqlQuery for #struct_name {
+            fn query() -> String {
+                format!(
+                    "SELECT {} FROM {} WHERE {}",
+                    #select,
+                    #table_name,
+                    #adjusted_where_clause
+                )
             }
         }
     };
@@ -266,20 +293,6 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for table name")
         .value();
 
-    let fields = if let Data::Struct(data) = &input.data {
-        if let Fields::Named(fields) = &data.fields {
-            fields
-                .named
-                .iter()
-                .map(|f| f.ident.as_ref().unwrap().to_string())
-                .collect::<Vec<_>>()
-        } else {
-            panic!("Queryable can only be derived for structs with named fields");
-        }
-    } else {
-        panic!("Queryable can only be derived for structs");
-    };
-
     let mut count = 1;
 
     let adjusted_where_clause = where_clause
@@ -299,13 +312,9 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .collect::<String>();
 
     let expanded = quote! {
-        impl Deleteable for #struct_name {
-            fn table_name() -> &'static str {
-                #table_name
-            }
-
-            fn where_clause() -> &'static str {
-                #adjusted_where_clause
+        impl SqlQuery for #struct_name {
+            fn query() -> String {
+                format!("DELETE FROM {} WHERE {}", #table_name, #adjusted_where_clause)
             }
         }
     };
@@ -443,23 +452,22 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
 pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
-    
+
     let fields = match &input.data {
-        Data::Struct(data) => {
-            match &data.fields {
-                Fields::Named(fields) => fields,
-                _ => panic!("Sadece named fields destekleniyor"),
-            }
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => fields,
+            _ => panic!("Sadece named fields destekleniyor"),
         },
         _ => panic!("Sadece struct'lar destekleniyor"),
     };
-    
-    let field_names = fields.named.iter()
-        .map(|f| f.ident.as_ref().unwrap());
-        
-    let field_strings = fields.named.iter()
+
+    let field_names = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
+
+    let field_strings = fields
+        .named
+        .iter()
         .map(|f| f.ident.as_ref().unwrap().to_string());
-    
+
     let expanded = quote! {
         impl FromRow for #name {
             fn from_row(row: &Row) -> Result<Self, Error> {
@@ -469,7 +477,7 @@ pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
             }
         }
     };
-    
+
     TokenStream::from(expanded)
 }
 

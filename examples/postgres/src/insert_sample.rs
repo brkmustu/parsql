@@ -1,7 +1,6 @@
 use parsql::{
-    core::Insertable,
     macros::{Insertable, SqlParams},
-    postgres::SqlParams,
+    postgres::{SqlParams, SqlQuery},
 };
 use postgres::types::ToSql;
 

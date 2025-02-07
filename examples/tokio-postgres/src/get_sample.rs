@@ -1,9 +1,8 @@
 use parsql::{
-    core::Queryable,
     macros::{FromRow, Queryable, SqlParams},
-    tokio_postgres::{FromRow, SqlParams},
+    tokio_postgres::{FromRow, SqlParams, SqlQuery},
 };
-use tokio_postgres::{types::ToSql, Row};
+use tokio_postgres::{types::ToSql, Row, Error};
 
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table_name("users")]

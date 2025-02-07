@@ -1,7 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use parsql_core::Insertable;
 use parsql_macros::{Insertable, SqlParams};
-use parsql_sqlite::{insert, SqlParams};
+use parsql_sqlite::{insert, SqlParams, SqlQuery};
 use rusqlite::{types::ToSql, Connection};
 
 #[derive(Insertable, SqlParams)]

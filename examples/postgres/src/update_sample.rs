@@ -1,7 +1,6 @@
 use parsql::{
-    core::Updateable,
     macros::{UpdateParams, Updateable},
-    postgres::UpdateParams,
+    postgres::{SqlQuery, UpdateParams},
 };
 use postgres::types::ToSql;
 

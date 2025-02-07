@@ -4,6 +4,10 @@ pub use crud_ops::*;
 
 use tokio_postgres::{types::ToSql, Row};
 
+pub trait SqlQuery {
+    fn query() -> String;
+}
+
 pub trait SqlParams {
     fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
 }

@@ -10,9 +10,6 @@ repository.workspace = true
 [dependencies]
 postgres = { version = "0.19.9" }
 
-[dependencies.parsql-core]
-workspace = true
-
 [dependencies.parsql-macros]
 workspace = true
 
