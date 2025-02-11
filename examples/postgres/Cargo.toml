@@ -5,4 +5,4 @@ edition = "2021"
 
 [dependencies]
 postgres = "0.19.9"
-parsql = { path = "../../", features = ["postgres"] }
+parsql = { path = "../../", version = "0.3.0", features = ["postgres"] }

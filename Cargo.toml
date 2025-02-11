@@ -4,6 +4,7 @@ members = [
     "examples/postgres",
     "examples/sqlite",
     "examples/tokio-postgres",
+    "parsql-core",
     "parsql-macros",
     "parsql-postgres",
     "parsql-sqlite",
@@ -31,21 +32,32 @@ repository.workspace = true
 
 [features]
 default = []
-sqlite = ["dep:parsql-sqlite", "parsql-macros/sqlite"]
-postgres = ["dep:parsql-postgres", "parsql-macros/postgres"]
-tokio-postgres = ["dep:parsql-tokio-postgres", "parsql-macros/tokio-postgres"]
+sqlite = ["dep:parsql-sqlite", "parsql-core/sqlite", "parsql-macros/sqlite"]
+postgres = [
+    "dep:parsql-postgres",
+    "parsql-core/postgres",
+    "parsql-macros/postgres",
+]
+tokio-postgres = [
+    "dep:parsql-tokio-postgres",
+    "parsql-core/tokio-postgres",
+    "parsql-macros/tokio-postgres",
+]
 deadpool-postgres = [
     "parsql-tokio-postgres/deadpool-postgres",
+    "parsql-core/deadpool-postgres",
     "parsql-macros/deadpool-postgres",
 ]
 
 [workspace.dependencies]
+parsql-core = { path = "parsql-core", workspace = true }
 parsql-macros = { path = "parsql-macros", workspace = true }
 parsql-sqlite = { path = "parsql-sqlite", workspace = true }
 parsql-postgres = { path = "parsql-postgres", workspace = true }
 parsql-tokio-postgres = { path = "parsql-tokio-postgres", workspace = true }
 
 [dependencies]
+parsql-core = { workspace = true }
 parsql-macros = { workspace = true }
 parsql-sqlite = { workspace = true, optional = true }
 parsql-postgres = { workspace = true, optional = true }

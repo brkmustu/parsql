@@ -1,24 +1,23 @@
 pub mod crud_ops;
 
-pub use crud_ops::*;
+// Re-export traits from parsql-core
+pub use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
 
-use tokio_postgres::{types::ToSql, Row};
+// Re-export tokio-postgres types that might be needed
+pub use tokio_postgres::{types::ToSql, Row, Error, Client};
 
-pub trait SqlQuery {
-    fn query() -> String;
-}
+// Re-export crud operations
+pub use crud_ops::{
+    insert, 
+    select, 
+    select_all, 
+    update, 
+    delete, 
+    get, 
+    get_all
+};
 
-pub trait SqlParams {
-    fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
-}
-
-pub trait UpdateParams {
-    fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
-}
-
-pub trait FromRow {
-    fn from_row(row: &Row) -> Self;
-}
+pub use parsql_macros as macros;
 
 #[cfg(feature = "deadpool-postgres")]
 pub mod transactional_ops;
