@@ -17,7 +17,7 @@ Temel sql cümleciklerinin direkt "struct" üzerinden yönetilebilmesini sağlay
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
-#[table_name("users")]
+#[table("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
     pub id: i64,

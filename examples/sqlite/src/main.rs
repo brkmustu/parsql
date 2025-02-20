@@ -5,7 +5,7 @@ use parsql::{
 use rusqlite::{types::ToSql, Connection, Row, Result, Error};
 
 #[derive(Insertable, SqlParams)]
-#[table_name("users")]
+#[table("users")]
 pub struct InsertUser {
     pub name: String,
     pub email: String,
@@ -13,8 +13,8 @@ pub struct InsertUser {
 }
 
 #[derive(Updateable, UpdateParams)]
-#[table_name("users")]
-#[update_clause("name, email")]
+#[table("users")]
+#[update("name, email")]
 #[where_clause("id = $")]
 pub struct UpdateUser {
     pub id: i64,
@@ -24,7 +24,7 @@ pub struct UpdateUser {
 }
 
 #[derive(Queryable, FromRow, SqlParams, Debug)]
-#[table_name("users")]
+#[table("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
     pub id: i64,

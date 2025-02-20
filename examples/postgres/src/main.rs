@@ -1,7 +1,12 @@
 use std::default;
 
-use example_parsql_postgres::{InsertUser, SelectUser, UpdateUser};
-use parsql::postgres::{insert, select, update};
+use example_parsql_postgres::{
+    InsertUser, 
+    SelectUser, 
+    UpdateUser,
+    SelectUserWithPosts
+};
+use parsql::postgres::{get, get_all, insert, select, update};
 use postgres::{Client, NoTls};
 
 fn init_connection() -> Client {
@@ -11,14 +16,32 @@ fn init_connection() -> Client {
     )
     .expect("Postgresql ile bağlantı aşamasında bir hata oluştu!");
 
-    let _ = client.batch_execute(
-        "CREATE TABLE IF NOT EXISTS users (
+    let _ = client.batch_execute("
+    CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        state INTEGER
-    );",
+        name TEXT,
+        email TEXT,
+        state INT
     );
+
+    CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        user_id INT,
+        content TEXT,
+        state INT
+    );
+");
+
+    // let _ = client.batch_execute(
+    //     "CREATE TABLE IF NOT EXISTS users (
+    //     id SERIAL PRIMARY KEY,
+    //     name VARCHAR(100) NOT NULL,
+    //     email VARCHAR(255) NOT NULL,
+    //     state INTEGER
+    // );",
+    // ).expect("Postgresql users tablosu oluşturulurken bir hata oluştu!");
+
+    // let _ = client.batch_execute("CREATE TABLE IF NOT EXISTS posts (id SERIAL PRIMARY KEY, user_id INTEGER, content VARCHAR(255) NOT NULL, state INTEGER);").expect("Postgresql posts tablosu oluşturulurken bir hata oluştu!");
 
     client
 }
@@ -63,4 +86,10 @@ fn main() {
     });
 
     println!("Select result: {:?}", select_result);
+
+    let select_user_with_posts = SelectUserWithPosts::new(1);
+
+    let get_user_with_posts = get(&mut db, &select_user_with_posts);
+
+    println!("Get user with posts: {:?}", get_user_with_posts);
 }

@@ -10,7 +10,7 @@ Generic insert işlemini kullanabilmek için struct tanımınıza aşağıdaki g
 
 ```rust
 #[derive(Insertable)]
-#[table_name("users")]
+#[table("users")]
 pub struct InsertUser {
     pub name: String,
     pub email: String,
@@ -49,7 +49,7 @@ Generic 'get' işlemini kullanabilmek için struct tanımınıza aşağıdaki gi
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
-#[table_name("users")]
+#[table("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
     pub id: i64,
@@ -96,8 +96,8 @@ Generic 'update' işlemini kullanabilmek için struct tanımınıza aşağıdaki
 
 ```rust
 #[derive(Updateable, UpdateParams)]
-#[table_name("users")]
-#[update_clause("name, email")]
+#[table("users")]
+#[update("name, email")]
 #[where_clause("id = $")]
 pub struct UpdateUser {
     pub id: i64,

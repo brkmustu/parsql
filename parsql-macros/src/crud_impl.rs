@@ -23,22 +23,22 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // Extracting `table_name` attribute
-    let table_name = input
+    // Extracting `table` attribute
+    let table = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("table_name"))
-        .expect("Missing `#[table_name = \"...\"]` attribute")
+        .find(|attr| attr.path().is_ident("table"))
+        .expect("Missing `#[table = \"...\"]` attribute")
         .parse_args::<syn::LitStr>()
-        .expect("Expected a string literal for `table_name`")
+        .expect("Expected a string literal for `table`")
         .value();
 
     // Extracting `columns` attribute
     let columns_attr = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("update_clause"))
-        .expect("Missing `#[update_clause = \"...\"]` attribute")
+        .find(|attr| attr.path().is_ident("update"))
+        .expect("Missing `#[update = \"...\"]` attribute")
         .parse_args::<syn::LitStr>()
         .expect("Expected a string literal for `columns`")
         .value();
@@ -112,7 +112,7 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
             fn query() -> String {
                 format!(
                     "UPDATE {} SET {} WHERE {}",
-                    #table_name,
+                    #table,
                     #update,
                     #adjusted_where_clause
                 )
@@ -128,11 +128,11 @@ pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
     let struct_name = &input.ident;
 
     // Table name and column extraction
-    let table_name = input
+    let table = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("table_name"))
-        .expect("Missing `#[table_name = \"...\"]` attribute")
+        .find(|attr| attr.path().is_ident("table"))
+        .expect("Missing `#[table = \"...\"]` attribute")
         .parse_args::<syn::LitStr>()
         .expect("Expected a string literal for table name")
         .value();
@@ -166,7 +166,7 @@ pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
             fn query() -> String {
                 format!(
                     "INSERT INTO {} ({}) VALUES ({})",
-                    #table_name,
+                    #table,
                     #columns,
                     #placeholders
                 )
@@ -182,11 +182,11 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     let struct_name = &input.ident;
 
     // Table name and column extraction
-    let table_name = input
+    let table = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("table_name"))
-        .expect("Missing `#[table_name = \"...\"]` attribute")
+        .find(|attr| attr.path().is_ident("table"))
+        .expect("Missing `#[table = \"...\"]` attribute")
         .parse_args::<syn::LitStr>()
         .expect("Expected a string literal for table name")
         .value();
@@ -215,6 +215,22 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
         panic!("Queryable can only be derived for structs");
     };
 
+    let joins: Vec<String> = input
+        .attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("join"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for join")
+                .value()
+        })
+        .collect();
+
+    let tables = match joins.len() > 0 {
+        true => format!("{} {}", table, joins.join(" ")),
+        false => table.to_string(),
+    };
+
     let mut count = 1;
 
     let adjusted_where_clause = where_clause
@@ -237,10 +253,10 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     let select = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("select_clause"))
+        .find(|attr| attr.path().is_ident("select"))
         .map(|attr| {
             attr.parse_args::<syn::LitStr>()
-                .expect("Expected a string literal for select_clause")
+                .expect("Expected a string literal for select")
                 .value()
         });
 
@@ -259,7 +275,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
                 format!(
                     "SELECT {} FROM {} WHERE {}",
                     #select,
-                    #table_name,
+                    #tables,
                     #adjusted_where_clause
                 )
             }
@@ -274,11 +290,11 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
     let struct_name = &input.ident;
 
     // Table name and column extraction
-    let table_name = input
+    let table = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("table_name"))
-        .expect("Missing `#[table_name = \"...\"]` attribute")
+        .find(|attr| attr.path().is_ident("table"))
+        .expect("Missing `#[table = \"...\"]` attribute")
         .parse_args::<syn::LitStr>()
         .expect("Expected a string literal for table name")
         .value();
@@ -314,7 +330,7 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
     let expanded = quote! {
         impl SqlQuery for #struct_name {
             fn query() -> String {
-                format!("DELETE FROM {} WHERE {}", #table_name, #adjusted_where_clause)
+                format!("DELETE FROM {} WHERE {}", #table, #adjusted_where_clause)
             }
         }
     };
@@ -379,14 +395,14 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // update_clause özniteliğini al
-    let update_clause = input
+    // update özniteliğini al
+    let update = input
         .attrs
         .iter()
-        .find(|attr| attr.path().is_ident("update_clause"))
-        .expect("Missing `#[update_clause = \"...\"]` attribute")
+        .find(|attr| attr.path().is_ident("update"))
+        .expect("Missing `#[update = \"...\"]` attribute")
         .parse_args::<syn::LitStr>()
-        .expect("Expected a string literal for update_clause")
+        .expect("Expected a string literal for update")
         .value();
 
     // where_clause özniteliğini al
@@ -414,7 +430,7 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     };
 
     // Güncelleme için kullanılacak alanları al
-    let update_fields: Vec<String> = update_clause
+    let update_fields: Vec<String> = update
         .split(',')
         .map(|s| s.trim().to_string())
         .collect();
@@ -481,39 +497,32 @@ pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub(crate) fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input as DeriveInput);
-    let name = &input.ident;
-
-    // Sadece struct'ları işler.
-    let fields = if let Data::Struct(data_struct) = &input.data {
-        if let Fields::Named(fields) = &data_struct.fields {
-            &fields.named
-        } else {
-            panic!("FromRow yalnızca adlandırılmış alanlara sahip struct'lar için desteklenir.");
-        }
-    } else {
-        panic!("FromRow yalnızca struct'lar için desteklenir.");
+pub fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
+    let name = &ast.ident;
+    let fields = match &ast.data {
+        Data::Struct(data) => {
+            match &data.fields {
+                Fields::Named(fields) => &fields.named,
+                _ => panic!("FromRow only supports structs with named fields"),
+            }
+        },
+        _ => panic!("FromRow only supports structs"),
     };
 
-    // Alan adlarını ve tiplerini çıkarır.
-    let field_initializers = fields.iter().map(|field| {
-        let name = &field.ident;
-        quote! {
-            #name: row.get(stringify!(#name))
-        }
-    });
+    let field_names = fields.iter().map(|f| &f.ident);
+    let field_names_str = fields.iter().map(|f| f.ident.as_ref().unwrap().to_string());
 
-    // Kod oluşturma
-    let expanded = quote! {
+    let gen = quote! {
         impl FromRow for #name {
-            fn from_row(row: &Row) -> Self {
-                Self {
-                    #(#field_initializers),*
-                }
+            fn from_row(row: &Row) -> Result<Self, Error> {
+                Ok(Self {
+                    #(
+                        #field_names: row.try_get(#field_names_str)?,
+                    )*
+                })
             }
         }
     };
-
-    TokenStream::from(expanded)
+    gen.into()
 }

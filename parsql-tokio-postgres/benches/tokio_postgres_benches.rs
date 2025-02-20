@@ -4,7 +4,7 @@ use parsql_tokio_postgres::{insert, SqlParams, SqlQuery};
 use tokio_postgres::{types::ToSql, Client, NoTls};
 
 #[derive(Insertable, SqlParams)]
-#[table_name("users")]
+#[table("users")]
 pub struct InsertUser {
     pub name: String,
     pub email: String,

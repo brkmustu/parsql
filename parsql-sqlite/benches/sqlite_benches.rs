@@ -4,7 +4,7 @@ use parsql_sqlite::{insert, SqlParams, SqlQuery};
 use rusqlite::{types::ToSql, Connection};
 
 #[derive(Insertable, SqlParams)]
-#[table_name("users")]
+#[table("users")]
 pub struct InsertUser {
     pub name: String,
     pub email: String,

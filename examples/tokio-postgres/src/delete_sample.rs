@@ -5,7 +5,7 @@ use parsql::{
 use tokio_postgres::types::ToSql;
 
 #[derive(Deleteable, Debug, SqlParams)]
-#[table_name("users")]
+#[table("users")]
 #[where_clause("id = $")]
 pub struct DeleteUser {
     pub id: i64,

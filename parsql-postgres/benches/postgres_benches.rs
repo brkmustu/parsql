@@ -4,7 +4,7 @@ use parsql_postgres::{ get, insert, FromRow, SqlParams, SqlQuery};
 use postgres::{types::ToSql, Client, NoTls, Row, Error};
 
 #[derive(Insertable, SqlParams)]
-#[table_name("users")]
+#[table("users")]
 pub struct InsertUser {
     pub name: String,
     pub email: String,
@@ -12,7 +12,7 @@ pub struct InsertUser {
 }
 
 #[derive(Queryable, FromRow, SqlParams)]
-#[table_name("users")]
+#[table("users")]
 #[where_clause("id = $")]
 pub struct GetUser{
     pub id: i32,

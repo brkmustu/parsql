@@ -1,5 +1,5 @@
 use ex_parsql_tokio_pg::{
-    delete_sample::DeleteUser, get_sample::GetUser, insert_sample::InsertUser,
+    delete_sample::DeleteUser, get_sample::{GetUser, SelectUserWithPosts}, insert_sample::InsertUser,
     update_sample::UpdateUser,
 };
 use parsql::tokio_postgres::{delete, get, insert, update};
@@ -49,4 +49,10 @@ async fn main() {
     let get_result = get(&client, &get_user).await;
 
     println!("Get result: {:?}", get_result);
+
+    let select_user_with_posts = SelectUserWithPosts::new(1);
+
+    let get_user_with_posts = get(&client, &select_user_with_posts).await;
+
+    println!("Get user with posts: {:?}", get_user_with_posts);
 }

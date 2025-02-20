@@ -5,8 +5,8 @@ use parsql::{
 use tokio_postgres::types::ToSql;
 
 #[derive(Updateable, UpdateParams)]
-#[table_name("users")]
-#[update_clause("name, email")]
+#[table("users")]
+#[update("name, email")]
 #[where_clause("id = $")]
 pub struct UpdateUser {
     pub id: i64,

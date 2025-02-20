@@ -22,18 +22,6 @@ pub trait UpdateParams {
     fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
 }
 
-#[cfg(feature = "sqlite")]
-pub trait FromRow {
-    fn from_row(row: &Row) -> Result<Self, Error>
-    where
-        Self: Sized;
-}
-
-#[cfg(any(
-    feature = "postgres",
-    feature = "tokio-postgres",
-    feature = "deadpool-postgres"
-))]
 pub trait FromRow {
     fn from_row(row: &Row) -> Result<Self, Error>
     where
