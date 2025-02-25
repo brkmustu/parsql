@@ -6,9 +6,11 @@ pub async fn insert<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let sql = T::query();
+    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
 
     let params = entity.params();
-
     client.execute(&sql, &params).await
 }
 
@@ -17,9 +19,11 @@ pub async fn update<T: SqlQuery + UpdateParams>(
     entity: T,
 ) -> Result<bool, Error> {
     let sql = T::query();
+    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
 
     let params = entity.params();
-
     match client.execute(&sql, &params).await {
         Ok(_) => Ok(true),
         Err(e) => Err(e),
@@ -31,11 +35,11 @@ pub async fn delete<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let sql = T::query();
-
-    println!("sql: {}", sql);
+    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
 
     let params = entity.params();
-
     match client.execute(&sql, &params).await {
         Ok(rows_affected) => Ok(rows_affected),
         Err(e) => Err(e),

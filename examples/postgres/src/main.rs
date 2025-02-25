@@ -42,6 +42,20 @@ fn init_connection() -> Client {
 }
 
 fn main() {
+
+    /*
+    # Unix/Linux/MacOS için
+    RUST_BACKTRACE=1 cargo run
+
+    # Windows PowerShell için
+    $env:RUST_BACKTRACE=1; cargo run
+
+    # Windows CMD için
+    set RUST_BACKTRACE=1 && cargo run
+    */
+
+    std::env::set_var("RUST_BACKTRACE", "1");
+
     let mut db = init_connection();
 
     let insert_user = InsertUser {
@@ -72,7 +86,7 @@ fn main() {
     println!("Insert result: {:?}", insert_result);
 
     let update_user = UpdateUser {
-        id: 24025,
+        id: 1,
         name: String::from("Ali"),
         email: String::from("ali@gmail.com"),
         state: 2,
@@ -100,7 +114,7 @@ fn main() {
 
     println!("Select result: {:?}", select_result);
 
-    let select_user_with_posts = SelectUserWithPosts::new(1_i64);
+    let select_user_with_posts = SelectUserWithPosts::new(1_i32);
 
     let get_user_with_posts = get_all(&mut db, &select_user_with_posts);
 

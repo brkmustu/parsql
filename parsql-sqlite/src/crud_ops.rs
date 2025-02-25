@@ -7,6 +7,9 @@ pub fn insert<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<usize, rusqlite::Error> {
     let sql = T::query();
+    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
 
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 
@@ -21,6 +24,9 @@ pub fn update<T: SqlQuery + UpdateParams>(
     entity: T,
 ) -> Result<usize, Error> {
     let sql = T::query();
+    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
 
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 
@@ -35,6 +41,9 @@ pub fn delete<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<usize, Error> {
     let sql = T::query();
+    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
 
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 

@@ -55,7 +55,7 @@ async fn main() {
     println!("Insert result: {:?}", insert_result);
 
     let update_user = UpdateUser {
-        id: 24025,
+        id: 1,
         name: String::from("Ali"),
         email: String::from("ali@gmail.com"),
         state: 2,
@@ -65,16 +65,16 @@ async fn main() {
 
     println!("Update result: {:?}", update_result);
 
-    let delete_user = DeleteUser { id: 9 };
+    let delete_user = DeleteUser { id: 6 };
     let delete_result = delete(&client, delete_user).await;
 
     println!("Delete result: {:?}", delete_result);
 
-    let get_user = GetUser::new(1_i64);
+    let get_user = GetUser::new(1_i32);
     let get_result = get(&client, &get_user).await;
     println!("Get result: {:?}", get_result);
 
-    let select_user_with_posts = SelectUserWithPosts::new(1_i64);
+    let select_user_with_posts = SelectUserWithPosts::new(1_i32);
 
     let get_user_with_posts = get_all(&client, &select_user_with_posts).await;
 

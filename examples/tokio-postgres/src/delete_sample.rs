@@ -8,5 +8,5 @@ use tokio_postgres::types::ToSql;
 #[table("users")]
 #[where_clause("id = $")]
 pub struct DeleteUser {
-    pub id: i64,
+    pub id: i32,
 }

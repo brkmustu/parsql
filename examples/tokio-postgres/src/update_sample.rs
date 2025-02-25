@@ -9,7 +9,7 @@ use tokio_postgres::types::ToSql;
 #[update("name, email")]
 #[where_clause("id = $")]
 pub struct UpdateUser {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub state: i16,

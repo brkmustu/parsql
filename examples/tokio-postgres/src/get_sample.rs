@@ -8,14 +8,14 @@ use tokio_postgres::{types::ToSql, Row, Error};
 #[table("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub state: i16,
 }
 
 impl GetUser {
-    pub fn new(id: i64) -> Self {
+    pub fn new(id: i32) -> Self {
         Self {
             id,
             name: String::default(),
@@ -29,7 +29,7 @@ impl GetUser {
 #[table("users")]
 #[where_clause("email = $")]
 pub struct GetAllUsers {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub state: i16,
@@ -42,7 +42,7 @@ pub struct GetAllUsers {
 #[join("LEFT JOIN comments ON posts.id = comments.post_id")]
 #[where_clause("users.id = $")]
 pub struct SelectUserWithPosts {
-    pub id: i64,
+    pub id: i32,
     pub name: String,
     pub email: String,
     pub user_state: i16,
@@ -53,7 +53,7 @@ pub struct SelectUserWithPosts {
 }
 
 impl SelectUserWithPosts {
-    pub fn new(id: i64) -> Self {
+    pub fn new(id: i32) -> Self {
         Self {
             id,
             name: String::default(),
