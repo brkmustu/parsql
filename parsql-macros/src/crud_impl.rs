@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use regex::Regex;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
+use syn::{parse_macro_input, Data, DeriveInput, Fields, Attribute, LitStr};
 
 fn extract_fields_from_where_clause(input: &str) -> Vec<String> {
     let mut fields = Vec::new();
@@ -17,6 +17,66 @@ fn extract_fields_from_where_clause(input: &str) -> Vec<String> {
     }
 
     fields
+}
+
+// Yeni bir güvenlik modülü ekleyelim
+mod query_builder {
+    pub(crate) struct SafeQueryBuilder {
+        pub query: String,
+        pub params: Vec<String>,
+        pub param_count: usize,
+    }
+
+    impl SafeQueryBuilder {
+        pub fn new() -> Self {
+            Self {
+                query: String::new(),
+                params: Vec::new(),
+                param_count: 0,
+            }
+        }
+
+        pub fn build(self) -> String {
+            self.query.trim().to_string()
+        }
+
+        pub fn add_keyword(&mut self, keyword: &str) {
+            if !self.query.is_empty() {
+                self.query.push_str(" ");
+            }
+            self.query.push_str(keyword);
+        }
+
+        pub fn add_identifier(&mut self, ident: &str) {
+            if !self.query.is_empty() {
+                self.query.push_str(" ");
+            }
+            let safe_ident = ident
+                .chars()
+                .filter(|c| c.is_alphanumeric() || *c == '_')
+                .collect::<String>();
+            self.query.push_str(&safe_ident);
+        }
+
+        pub fn add_comma_list(&mut self, items: &[&str]) {
+            let safe_items: Vec<String> = items
+                .iter()
+                .map(|item| {
+                    item.chars()
+                        .filter(|c| c.is_alphanumeric() || *c == '_')
+                        .collect()
+                })
+                .collect();
+            self.query.push_str(&safe_items.join(", "));
+        }
+
+        pub fn add_raw(&mut self, text: &str) {
+            if !self.query.is_empty() && !text.starts_with(',') {
+                self.query.push_str(" ");
+            }
+            self.query.push_str(text);
+        }
+    }
 }
 
 pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
@@ -100,22 +160,37 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         })
         .collect::<String>();
 
-    let update = column_names
-        .into_iter()
+    let mut builder = query_builder::SafeQueryBuilder::new();
+    
+    builder.add_keyword("UPDATE");
+    builder.add_identifier(&table);
+    builder.add_keyword("SET");
+
+    // SET ifadelerini güvenli şekilde oluştur
+    let update_statements: Vec<String> = column_order
+        .iter()
         .enumerate()
-        .map(|(i, col)| format!("{} = ${}", col, i + 1))
-        .collect::<Vec<_>>()
-        .join(", ");
+        .map(|(i, col)| {
+            let safe_col = col.chars()
+                .filter(|c| c.is_alphanumeric() || *c == '_')
+                .collect::<String>();
+            format!("{} = ${}", safe_col, i + 1)
+        })
+        .collect();
+    
+    builder.add_raw(&update_statements.join(", "));
+    
+    if !adjusted_where_clause.is_empty() {
+        builder.add_keyword("WHERE");
+        builder.add_raw(&adjusted_where_clause);
+    }
+
+    let safe_query = builder.build();
 
     let expanded = quote! {
         impl SqlQuery for #struct_name {
             fn query() -> String {
-                format!(
-                    "UPDATE {} SET {} WHERE {}",
-                    #table,
-                    #update,
-                    #adjusted_where_clause
-                )
+                #safe_query.to_string()
             }
         }
     };
@@ -153,23 +228,32 @@ pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
 
     let column_names = fields.iter().map(|f| f.as_str()).collect::<Vec<_>>();
 
-    let columns = column_names.clone().join(", ");
-
-    let placeholders = (1..=column_names.len())
+    // placeholders'ı Vec<String> olarak oluşturalım, String olarak değil
+    let placeholders: Vec<String> = (1..=column_names.len())
         .map(|i| format!("${}", i))
-        .collect::<Vec<_>>()
-        .join(", ");
+        .collect();
 
-    // Insertable implementation
+    let mut builder = query_builder::SafeQueryBuilder::new();
+    
+    builder.add_keyword("INSERT INTO");
+    builder.add_identifier(&table);
+    builder.add_keyword("(");
+    builder.add_comma_list(&column_names);
+    builder.add_keyword(")");
+    builder.add_keyword("VALUES");
+    builder.add_keyword("(");
+    
+    let placeholder_str = placeholders.join(", ");
+    builder.query.push_str(&placeholder_str);
+    
+    builder.add_keyword(")");
+
+    let safe_query = builder.build();
+
     let expanded = quote! {
         impl SqlQuery for #struct_name {
             fn query() -> String {
-                format!(
-                    "INSERT INTO {} ({}) VALUES ({})",
-                    #table,
-                    #columns,
-                    #placeholders
-                )
+                #safe_query.to_string()
             }
         }
     };
@@ -226,10 +310,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
         })
         .collect();
 
-    let tables = match joins.len() > 0 {
-        true => format!("{} {}", table, joins.join(" ")),
-        false => table.to_string(),
-    };
+    let tables = table.to_string();
 
     let mut count = 1;
 
@@ -269,15 +350,29 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
             .join(", ")
     });
 
+    let mut builder = query_builder::SafeQueryBuilder::new();
+    
+    builder.add_keyword("SELECT");
+    builder.add_raw(&select);
+    builder.add_keyword("FROM");
+    builder.add_identifier(&tables);
+    
+    // Join ifadelerini ayrı ayrı ekleyelim ve her birinin etrafına boşluk koyalım
+    for join in joins {
+        builder.add_raw(&format!(" {} ", join.trim()));
+    }
+    
+    if !adjusted_where_clause.is_empty() {
+        builder.add_keyword("WHERE");
+        builder.add_raw(&adjusted_where_clause);
+    }
+
+    let safe_query = builder.build();
+
     let expanded = quote! {
         impl SqlQuery for #struct_name {
             fn query() -> String {
-                format!(
-                    "SELECT {} FROM {} WHERE {}",
-                    #select,
-                    #tables,
-                    #adjusted_where_clause
-                )
+                #safe_query.to_string()
             }
         }
     };
@@ -289,7 +384,6 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // Table name and column extraction
     let table = input
         .attrs
         .iter()
@@ -299,7 +393,6 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for table name")
         .value();
 
-    // Table name and column extraction
     let where_clause = input
         .attrs
         .iter()
@@ -310,27 +403,31 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .value();
 
     let mut count = 1;
-
     let adjusted_where_clause = where_clause
         .chars()
         .enumerate()
         .map(|(_, c)| {
             if c == '$' {
-                // $ karakterinin yanına numara ekleyelim
-                let new_char = format!("${}", count);
-                count += 1;
-                new_char
+                format!("${}", count)
             } else {
-                // Diğer karakterleri olduğu gibi bırakıyoruz
                 c.to_string()
             }
         })
         .collect::<String>();
 
+    let mut builder = query_builder::SafeQueryBuilder::new();
+    
+    builder.add_keyword("DELETE FROM");
+    builder.add_identifier(&table);
+    builder.add_keyword("WHERE");
+    builder.add_raw(&adjusted_where_clause);  // SafeQueryBuilder otomatik olarak boşluk ekleyecek
+
+    let safe_query = builder.build();
+
     let expanded = quote! {
         impl SqlQuery for #struct_name {
             fn query() -> String {
-                format!("DELETE FROM {} WHERE {}", #table, #adjusted_where_clause)
+                #safe_query.to_string()
             }
         }
     };
@@ -525,4 +622,49 @@ pub fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
         }
     };
     gen.into()
+}
+
+fn process_join_clause(join_attr: &str) -> String {
+    format!(" {} ", join_attr.trim())
+}
+
+pub(crate) fn impl_deleteable(ast: &DeriveInput) -> TokenStream {
+    let struct_name = &ast.ident;
+    let table_name = get_table_name(&ast.attrs);
+    let where_clause = get_where_clause(&ast.attrs);
+    
+    let sql = format!("DELETE FROM {}{}", table_name, where_clause);
+    
+    let expanded = quote! {
+        impl SqlQuery for #struct_name {
+            fn query() -> String {
+                #sql.to_string()
+            }
+        }
+    };
+
+    TokenStream::from(expanded)
+}
+
+fn get_table_name(attrs: &[Attribute]) -> String {
+    for attr in attrs {
+        if attr.path().is_ident("table") {
+            if let Ok(lit) = attr.parse_args::<LitStr>() {
+                return lit.value();
+            }
+        }
+    }
+    panic!("Missing `#[table = \"...\"]` attribute")
+}
+
+fn get_where_clause(attrs: &[Attribute]) -> String {
+    for attr in attrs {
+        if attr.path().is_ident("where_clause") {
+            if let Ok(lit) = attr.parse_args::<LitStr>() {
+                // WHERE kelimesi ve koşul arasına boşluk ekliyoruz
+                return format!(" WHERE {} ", lit.value());
+            }
+        }
+    }
+    panic!("Missing `#[where_clause = \"...\"]` attribute")
 }

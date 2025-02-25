@@ -32,6 +32,8 @@ pub async fn delete<T: SqlQuery + SqlParams>(
 ) -> Result<u64, Error> {
     let sql = T::query();
 
+    println!("sql: {}", sql);
+
     let params = entity.params();
 
     match client.execute(&sql, &params).await {
@@ -57,6 +59,7 @@ pub async fn get_all<T: SqlQuery + FromRow + SqlParams>(
     params: &T,
 ) -> Result<Vec<T>, Error> {
     let sql = T::query();
+    println!("sql: {}", sql);
     let params = params.params();
     let rows = client.query(&sql, &params).await?;
     

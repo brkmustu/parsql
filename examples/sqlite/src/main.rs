@@ -33,10 +33,31 @@ pub struct GetUser {
     pub state: i16,
 }
 
+#[derive(Queryable, FromRow, SqlParams, Debug)]
+#[table("users")]
+#[where_clause("name = $")]
+pub struct GetUserByName {
+    pub id: i64,
+    pub name: String,
+    pub email: String,
+    pub state: i16,
+}
+
 fn main() {
     let conn = Connection::open("sqlite_db.db3").unwrap();
 
-    let _ = conn.execute_batch("CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, email TEXT, state INTEGER);");
+    let _ = conn.execute_batch("
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            name TEXT, 
+            email TEXT, 
+            state INTEGER
+        );
+        
+        INSERT INTO users (name, email, state) VALUES 
+            ('admin', 'admin@example.com', 1),
+            ('user1', 'user1@example.com', 1);
+    ");
 
     let insert_usert = InsertUser {
         name: "Ali".to_string(),
@@ -67,4 +88,32 @@ fn main() {
     let get_user_result = get(&conn, get_user);
 
     println!("get user result: {:?}", get_user_result);
+
+    // SQL Injection Denemesi
+    let malicious_name = "' OR '1'='1";
+    
+    let get_user = GetUserByName {
+        id: 0,
+        name: malicious_name.to_string(),
+        email: String::new(),
+        state: 0,
+    };
+
+    match get(&conn, get_user) {
+        Ok(user) => println!("Bulunan kullanıcı: {:?}", user),
+        Err(e) => println!("Hata: {}", e),
+    }
+
+    // parsql için isim ile sorgulama örneği
+    let get_user = GetUserByName {
+        id: 0,
+        name: "admin".to_string(),
+        email: String::new(),
+        state: 0,
+    };
+
+    match get(&conn, get_user) {
+        Ok(user) => println!("Bulunan kullanıcı: {:?}", user),
+        Err(e) => println!("Hata: {}", e),
+    }
 }

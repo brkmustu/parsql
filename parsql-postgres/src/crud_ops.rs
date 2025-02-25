@@ -55,6 +55,7 @@ pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
     params: &T,
 ) -> Result<Vec<T>, Error> {
     let query = T::query();
+    println!("query: {}", query);
     let params = params.params();
     let rows = client.query(&query, &params)?;
     

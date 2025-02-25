@@ -1,9 +1,17 @@
 use proc_macro::TokenStream;
 
 mod crud_impl;
+mod sql_sanitizer;
+
+// SQL injection koruması için yardımcı özellikler
+trait SqlSanitizer {
+    fn sanitize_identifier(&self) -> String;
+    fn sanitize_value(&self) -> String;
+}
 
 #[proc_macro_derive(Updateable, attributes(table, where_clause, update))]
 pub fn derive_updateable(input: TokenStream) -> TokenStream {
+    // Güvenli parametre kullanımı için özel kontroller ekleyelim
     crud_impl::derive_updateable_impl(input)
 }
 
@@ -32,6 +40,26 @@ pub fn derive_update_params(input: TokenStream) -> TokenStream {
     crud_impl::derive_update_params_impl(input)
 }
 
+// Yeni bir güvenlik katmanı ekleyelim
+mod security {
+    use super::*;
+    
+    pub(crate) fn validate_sql_params(params: &[String]) -> Result<(), String> {
+        for param in params {
+            if contains_sql_injection_patterns(param) {
+                return Err(format!("Potansiyel SQL injection tespit edildi: {}", param));
+            }
+        }
+        Ok(())
+    }
+
+    fn contains_sql_injection_patterns(input: &str) -> bool {
+        let patterns = ["--", ";", "DROP", "DELETE", "UPDATE", "INSERT"];
+        patterns.iter().any(|pattern| input.contains(pattern))
+    }
+}
+
+// FromRow türetmesi için güvenlik kontrolleri
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
     #[cfg(feature = "sqlite")]

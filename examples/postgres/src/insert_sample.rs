@@ -11,3 +11,19 @@ pub struct InsertUser {
     pub email: String,
     pub state: i16,
 }
+
+#[derive(Insertable, SqlParams)]
+#[table("posts")]
+pub struct InsertPost {
+    pub user_id: i32,
+    pub content: String,
+    pub state: i16,
+}
+
+#[derive(Insertable, SqlParams)]
+#[table("comments")]
+pub struct InsertComment {
+    pub post_id: i32,
+    pub content: String,
+    pub state: i16,
+}

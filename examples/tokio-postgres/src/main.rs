@@ -2,7 +2,7 @@ use ex_parsql_tokio_pg::{
     delete_sample::DeleteUser, get_sample::{GetUser, SelectUserWithPosts}, insert_sample::InsertUser,
     update_sample::UpdateUser,
 };
-use parsql::tokio_postgres::{delete, get, insert, update};
+use parsql::tokio_postgres::{delete, get, get_all, insert, update};
 use postgres::NoTls;
 
 #[tokio::main]
@@ -19,10 +19,35 @@ async fn main() {
         }
     });
 
+    let _ = client.batch_execute(
+        "
+    CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        state SMALLINT
+    );
+
+    CREATE TABLE IF NOT EXISTS posts (
+        id SERIAL PRIMARY KEY,
+        user_id INT,
+        content TEXT,
+        state SMALLINT
+    );
+
+    CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        post_id INT,
+        content TEXT,
+        state SMALLINT
+    );
+",
+    );
+
     let insert_user = InsertUser {
         name: "Ali".to_string(),
         email: "alice@parsql.com".to_string(),
-        state: 1,
+        state: 1_i16,
     };
 
     let insert_result = insert(&client, insert_user).await;
@@ -45,14 +70,13 @@ async fn main() {
 
     println!("Delete result: {:?}", delete_result);
 
-    let get_user = GetUser::new(24025);
+    let get_user = GetUser::new(1_i64);
     let get_result = get(&client, &get_user).await;
-
     println!("Get result: {:?}", get_result);
 
-    let select_user_with_posts = SelectUserWithPosts::new(1);
+    let select_user_with_posts = SelectUserWithPosts::new(1_i64);
 
-    let get_user_with_posts = get(&client, &select_user_with_posts).await;
+    let get_user_with_posts = get_all(&client, &select_user_with_posts).await;
 
     println!("Get user with posts: {:?}", get_user_with_posts);
 }
