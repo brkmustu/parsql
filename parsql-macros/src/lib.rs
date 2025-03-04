@@ -20,7 +20,7 @@ pub fn derive_insertable(input: TokenStream) -> TokenStream {
     crud_impl::derive_insertable_impl(input)
 }
 
-#[proc_macro_derive(Queryable, attributes(table, where_clause, select, join))]
+#[proc_macro_derive(Queryable, attributes(table, where_clause, select, join, group_by, order_by, having))]
 pub fn derive_queryable(input: TokenStream) -> TokenStream {
     crud_impl::derive_queryable_impl(input)
 }

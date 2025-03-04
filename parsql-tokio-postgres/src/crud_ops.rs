@@ -6,7 +6,7 @@ pub async fn insert<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
     }
 
@@ -19,7 +19,7 @@ pub async fn update<T: SqlQuery + UpdateParams>(
     entity: T,
 ) -> Result<bool, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
     }
 
@@ -35,7 +35,7 @@ pub async fn delete<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
     }
 
@@ -51,6 +51,10 @@ pub async fn get<T: SqlQuery + FromRow + SqlParams>(
     params: &T,
 ) -> Result<T, Error> {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
     let params = params.params();
     match client.query_one(&sql, &params).await {
         Ok(_row) => T::from_row(&_row),
@@ -63,7 +67,9 @@ pub async fn get_all<T: SqlQuery + FromRow + SqlParams>(
     params: &T,
 ) -> Result<Vec<T>, Error> {
     let sql = T::query();
-    println!("sql: {}", sql);
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
     let params = params.params();
     let rows = client.query(&sql, &params).await?;
     
@@ -81,6 +87,9 @@ where
     F: Fn(&Row) -> Result<T, Error>,
 {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
 
     let params = entity.params();
 
@@ -99,6 +108,9 @@ where
     F: Fn(&Row) -> T,
 {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
 
     let params = entity.params();
 

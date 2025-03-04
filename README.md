@@ -61,3 +61,37 @@ use tokio_postgres::{types::ToSql, Row};
 ```
 
 github'da projenin repository'sinde, "examples" klasörü altında "sqlite" ve "tokio-postgres" örnek projelerinde, örnek kullanımlar mevcuttur.
+
+### Gruplama ve Sıralama Özellikleri
+
+Sorgularınızda GROUP BY ve ORDER BY ifadelerini kullanmak için `group_by` ve `order_by` özniteliklerini kullanabilirsiniz:
+
+```rust
+#[derive(Queryable, FromRow, SqlParams, Debug)]
+#[table("users")]
+#[select("users.state, COUNT(*) as user_count")]
+#[group_by("users.state")]
+#[order_by("user_count DESC")]
+pub struct UserStateStats {
+    pub state: i16,
+    pub user_count: i64,
+}
+```
+
+Bu öznitelikler opsiyoneldir ve ihtiyacınıza göre birlikte veya ayrı ayrı kullanılabilir. Örneğin:
+
+```rust
+// Sadece sıralama
+#[derive(Queryable, FromRow, SqlParams)]
+#[table("users")]
+#[order_by("created_at DESC")]
+pub struct RecentUsers { ... }
+
+// Join ve gruplama birlikte
+#[derive(Queryable, FromRow, SqlParams)]
+#[table("users")]
+#[select("users.state, COUNT(posts.id) as post_count")]
+#[join("LEFT JOIN posts ON users.id = posts.user_id")]
+#[group_by("users.state")]
+pub struct UserPostCounts { ... }
+```

@@ -2,7 +2,7 @@ use std::default;
 
 use example_parsql_postgres::{
     insert_sample::{InsertComment, InsertPost},
-    InsertUser, SelectUser, SelectUserWithPosts, UpdateUser,
+    InsertUser, SelectUser, SelectUserWithPosts, UpdateUser, UserStateStats, UserPostStats,
 };
 use parsql::postgres::{get, get_all, insert, select, update};
 use postgres::{Client, NoTls};
@@ -14,30 +14,56 @@ fn init_connection() -> Client {
     )
     .expect("Postgresql ile bağlantı aşamasında bir hata oluştu!");
 
+    // Tabloları oluştur ve örnek veriler ekle
     let _ = client.batch_execute(
         "
+    DROP TABLE IF EXISTS comments;
+    DROP TABLE IF EXISTS posts;
+    DROP TABLE IF EXISTS users;
+
     CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
-        name TEXT,
-        email TEXT,
-        state SMALLINT
+        name TEXT NOT NULL,
+        email TEXT NOT NULL,
+        state SMALLINT NOT NULL DEFAULT 1
     );
 
     CREATE TABLE IF NOT EXISTS posts (
         id SERIAL PRIMARY KEY,
-        user_id INT,
-        content TEXT,
-        state SMALLINT
+        user_id INT NOT NULL REFERENCES users(id),
+        content TEXT NOT NULL,
+        state SMALLINT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS comments (
         id SERIAL PRIMARY KEY,
-        post_id INT,
-        content TEXT,
-        state SMALLINT
+        post_id INT NOT NULL REFERENCES posts(id),
+        content TEXT NOT NULL,
+        state SMALLINT NOT NULL DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
-",
-    );
+
+    -- Örnek veriler
+    INSERT INTO users (name, email, state) VALUES 
+        ('Admin', 'admin@example.com', 1),
+        ('User1', 'user1@example.com', 1),
+        ('User2', 'user2@example.com', 2);
+
+    INSERT INTO posts (user_id, content, state) VALUES 
+        (1, 'Admin post 1', 1),
+        (1, 'Admin post 2', 1),
+        (2, 'User1 post 1', 1),
+        (3, 'User2 post 1', 2);
+
+    INSERT INTO comments (post_id, content, state) VALUES 
+        (1, 'Comment on admin post 1', 1),
+        (1, 'Another comment on admin post 1', 1),
+        (2, 'Comment on admin post 2', 1),
+        (3, 'Comment on User1 post', 1);
+    ",
+    ).expect("Tablo oluşturma işlemi başarısız oldu!");
+    
     client
 }
 
@@ -45,16 +71,16 @@ fn main() {
 
     /*
     # Unix/Linux/MacOS için
-    RUST_BACKTRACE=1 cargo run
+    PARSQL_TRACE=1 cargo run
 
     # Windows PowerShell için
-    $env:RUST_BACKTRACE=1; cargo run
+    $env:PARSQL_TRACE=1; cargo run
 
     # Windows CMD için
-    set RUST_BACKTRACE=1 && cargo run
+    set PARSQL_TRACE=1 && cargo run
     */
 
-    std::env::set_var("RUST_BACKTRACE", "1");
+    std::env::set_var("PARSQL_TRACE", "1");
 
     let mut db = init_connection();
 
@@ -119,4 +145,14 @@ fn main() {
     let get_user_with_posts = get_all(&mut db, &select_user_with_posts);
 
     println!("Get user with posts: {:?}", get_user_with_posts);
+
+    // Kullanıcı durumu istatistikleri (HAVING ile)
+    let user_state_stats = UserStateStats::new(0);
+    let stats_result = get_all(&mut db, &user_state_stats);
+    println!("User state stats: {:?}", stats_result);
+
+    // Kullanıcı gönderi istatistikleri (HAVING ile)
+    let user_post_stats = UserPostStats::new(0);
+    let post_stats_result = get_all(&mut db, &user_post_stats);
+    println!("User post stats: {:?}", post_stats_result);
 }

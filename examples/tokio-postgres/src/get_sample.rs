@@ -25,7 +25,7 @@ impl GetUser {
     }
 }
 
-#[derive(Queryable, FromRow, Debug)]
+#[derive(Queryable, SqlParams, FromRow, Debug)]
 #[table("users")]
 #[where_clause("email = $")]
 pub struct GetAllUsers {
@@ -35,7 +35,7 @@ pub struct GetAllUsers {
     pub state: i16,
 }
 
-#[derive(Queryable, FromRow, SqlParams, Debug)]
+#[derive(Queryable, SqlParams, FromRow, Debug)]
 #[table("users")]
 #[select("users.id, users.name, users.email, users.state as user_state, posts.id as post_id, posts.content, posts.state as post_state, comments.content as comment")]
 #[join("INNER JOIN posts ON users.id = posts.user_id")]
@@ -63,6 +63,100 @@ impl SelectUserWithPosts {
             content: String::default(),
             post_state: 0,
             comment: None,
+        }
+    }
+}
+
+// Gruplama ve sıralama örneği
+#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[table("users")]
+#[select("users.state, COUNT(*) as user_count")]
+#[where_clause("state > $")]
+#[group_by("users.state")]
+#[order_by("user_count DESC")]
+pub struct UserStateStats {
+    pub state: i16,
+    pub user_count: i64,
+}
+
+impl UserStateStats {
+    pub fn new(min_state: i16) -> Self {
+        Self {
+            state: min_state,
+            user_count: 0,
+        }
+    }
+}
+
+// Join ile birlikte gruplama ve sıralama örneği
+#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[table("users")]
+#[select("users.state, posts.state as post_state, COUNT(posts.id) as post_count")]
+#[join("LEFT JOIN posts ON users.id = posts.user_id")]
+#[where_clause("users.state > $")]
+#[group_by("users.state, posts.state")]
+#[order_by("post_count DESC")]
+pub struct UserPostStats {
+    pub state: i16,
+    pub post_state: Option<i16>,
+    pub post_count: i64,
+}
+
+impl UserPostStats {
+    pub fn new(min_state: i16) -> Self {
+        Self {
+            state: min_state,
+            post_state: None,
+            post_count: 0,
+        }
+    }
+}
+
+// HAVING ifadesi ile grup filtreleme örneği
+#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[table("users")]
+#[select("users.state, COUNT(*) as user_count")]
+#[where_clause("state > $")]
+#[group_by("users.state")]
+#[having("COUNT(*) > 1")]
+#[order_by("user_count DESC")]
+pub struct UserStateStatsFiltered {
+    pub state: i16,
+    pub user_count: i64,
+}
+
+impl UserStateStatsFiltered {
+    pub fn new(min_state: i16) -> Self {
+        Self {
+            state: min_state,
+            user_count: 0,
+        }
+    }
+}
+
+// Join, gruplama ve HAVING ile filtreleme örneği
+#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[table("users")]
+#[select("users.state, posts.state as post_state, COUNT(posts.id) as post_count, AVG(posts.id)::REAL as avg_post_id")]
+#[join("LEFT JOIN posts ON users.id = posts.user_id")]
+#[where_clause("users.state > $")]
+#[group_by("users.state, posts.state")]
+#[having("COUNT(posts.id) > 0 AND AVG(posts.id) > 2")]
+#[order_by("post_count DESC")]
+pub struct UserPostStatsAdvanced {
+    pub state: i16,
+    pub post_state: Option<i16>,
+    pub post_count: i64,
+    pub avg_post_id: Option<f32>,
+}
+
+impl UserPostStatsAdvanced {
+    pub fn new(min_state: i16) -> Self {
+        Self {
+            state: min_state,
+            post_state: None,
+            post_count: 0,
+            avg_post_id: None,
         }
     }
 }

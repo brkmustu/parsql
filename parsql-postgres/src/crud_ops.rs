@@ -4,7 +4,7 @@ use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
 
 pub fn insert<T: SqlQuery + SqlParams>(client: &mut Client, entity: T) -> Result<u64, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
 
@@ -17,7 +17,7 @@ pub fn update<T: SqlQuery + UpdateParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
 
@@ -33,7 +33,7 @@ pub fn delete<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<u64, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
 
@@ -49,7 +49,7 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
     params: &T,
 ) -> Result<T, Error> {
     let query = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", query);
     }
     
@@ -65,7 +65,9 @@ pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
     params: &T,
 ) -> Result<Vec<T>, Error> {
     let query = T::query();
-    println!("[PARSQL-POSTGRES] Execute SQL: {}", query);
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", query);
+    }
     let params = params.params();
     let rows = client.query(&query, &params)?;
     
@@ -96,6 +98,10 @@ where
 {
     let sql = T::query();
 
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
     let params = entity.params();
 
     let query = client.prepare(&sql).unwrap();
@@ -115,6 +121,9 @@ where
     F: Fn(&Row) -> Result<T, Error>,
 {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
     let params = entity.params();
     let rows = client.query(&sql, &params)?;
 

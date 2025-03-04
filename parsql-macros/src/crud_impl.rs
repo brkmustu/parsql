@@ -350,6 +350,39 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
             .join(", ")
     });
 
+    // Group by özniteliğini opsiyonel olarak al
+    let group_by = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("group_by"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for group_by")
+                .value()
+        });
+
+    // Having özniteliğini opsiyonel olarak al
+    let having = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("having"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for having")
+                .value()
+        });
+
+    // Order by özniteliğini opsiyonel olarak al
+    let order_by = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("order_by"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for order_by")
+                .value()
+        });
+
     let mut builder = query_builder::SafeQueryBuilder::new();
     
     builder.add_keyword("SELECT");
@@ -365,6 +398,24 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     if !adjusted_where_clause.is_empty() {
         builder.add_keyword("WHERE");
         builder.add_raw(&adjusted_where_clause);
+    }
+
+    // GROUP BY ifadesini ekle
+    if let Some(group_by_clause) = group_by {
+        builder.add_keyword("GROUP BY");
+        builder.add_raw(&group_by_clause);
+    }
+
+    // HAVING ifadesini ekle
+    if let Some(having_clause) = having {
+        builder.add_keyword("HAVING");
+        builder.add_raw(&having_clause);
+    }
+
+    // ORDER BY ifadesini ekle
+    if let Some(order_by_clause) = order_by {
+        builder.add_keyword("ORDER BY");
+        builder.add_raw(&order_by_clause);
     }
 
     let safe_query = builder.build();

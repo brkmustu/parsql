@@ -7,7 +7,7 @@ pub fn insert<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<usize, rusqlite::Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
     }
 
@@ -24,7 +24,7 @@ pub fn update<T: SqlQuery + UpdateParams>(
     entity: T,
 ) -> Result<usize, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
     }
 
@@ -41,7 +41,7 @@ pub fn delete<T: SqlQuery + SqlParams>(
     entity: T,
 ) -> Result<usize, Error> {
     let sql = T::query();
-    if std::env::var("RUST_BACKTRACE").unwrap_or_default() == "1" {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
     }
 
@@ -58,6 +58,9 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
     entity: T,
 ) -> Result<T, Error> {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
 
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 
@@ -69,6 +72,9 @@ pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
     entity: T,
 ) -> Result<Vec<T>, Error> {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
     let _params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
     let mut stmt = conn.prepare(&sql)?;
 
@@ -87,6 +93,9 @@ where
 {
 
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
 
     let params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 
@@ -105,6 +114,9 @@ where
     F: Fn(&Row) -> Result<T, Error>,
 {
     let sql = T::query();
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+    }
 
     let params: Vec<&dyn ToSql> = entity.params().iter().map(|p| *p as &dyn ToSql).collect();
 

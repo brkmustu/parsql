@@ -45,3 +45,48 @@ impl SelectUserWithPosts {
         }
     }
 }
+
+#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[table("users")]
+#[select("users.state, COUNT(*) as user_count")]
+#[where_clause("state > $")]
+#[group_by("users.state")]
+#[having("COUNT(*) > 0")]
+#[order_by("user_count DESC")]
+pub struct UserStateStats {
+    pub state: i16,
+    pub user_count: i64,
+}
+
+impl UserStateStats {
+    pub fn new(min_state: i16) -> Self {
+        Self {
+            state: min_state,
+            user_count: 0,
+        }
+    }
+}
+
+#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[table("users")]
+#[select("users.state, posts.state as post_state, COUNT(posts.id) as post_count")]
+#[join("LEFT JOIN posts ON users.id = posts.user_id")]
+#[where_clause("users.state > $")]
+#[group_by("users.state, posts.state")]
+#[having("COUNT(posts.id) > 0")]
+#[order_by("post_count DESC")]
+pub struct UserPostStats {
+    pub state: i16,
+    pub post_state: Option<i16>,
+    pub post_count: i64,
+}
+
+impl UserPostStats {
+    pub fn new(min_state: i16) -> Self {
+        Self {
+            state: min_state,
+            post_state: None,
+            post_count: 0,
+        }
+    }
+}
