@@ -13,10 +13,12 @@ Cargo.lock
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+.cursor/
 
 #sqlite databases
 *.db3
 .cursorrules
+CLAUDE.md
 
 # RustRover
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
