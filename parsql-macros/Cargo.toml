@@ -17,7 +17,7 @@ proc-macro2 = "1.0.92"
 regex = "1.11.1"
 
 [features]
-default = []
+default = ["sqlite"]
 sqlite = []
 postgres = []
 tokio-postgres = []

@@ -1,6 +1,7 @@
-use postgres::{Client, Error, Row};
-use postgres::types::ToSql;
-use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
+use postgres::{types::ToSql, Client, Error, Row};
+use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
+
+
 
 /// # insert
 /// 

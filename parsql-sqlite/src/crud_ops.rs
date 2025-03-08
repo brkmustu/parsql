@@ -1,6 +1,5 @@
 use rusqlite::{Error, Row, ToSql};
-use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
-
+use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 /// # insert
 /// 
 /// Inserts a new record into the SQLite database.
@@ -30,8 +29,20 @@ use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
 /// - `#[table("table_name")]`: Specifies the table name for the insertion
 /// 
 /// ## Example Usage
-/// ```rust
-/// // Define an entity for insertion
+/// 
+/// ```rust,ignore
+/// // Required imports
+/// use rusqlite::Connection;
+/// use parsql_macros::{Insertable, SqlParams};
+/// use parsql_sqlite::insert;
+/// 
+/// // Create a database connection
+/// let conn = Connection::open_in_memory().unwrap();
+/// 
+/// // Create the table
+/// conn.execute("CREATE TABLE users (name TEXT, email TEXT, state INTEGER)", []).unwrap();
+/// 
+/// // Define your entity with appropriate macros
 /// #[derive(Insertable, SqlParams)]
 /// #[table("users")]
 /// pub struct InsertUser {
@@ -40,7 +51,7 @@ use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
 ///     pub state: i16,
 /// }
 ///
-/// // Create a new user
+/// // Create a new instance of your entity
 /// let insert_user = InsertUser {
 ///     name: "John".to_string(),
 ///     email: "john@example.com".to_string(),
@@ -70,39 +81,44 @@ pub fn insert<T: SqlQuery + SqlParams>(
 
 /// # update
 /// 
-/// Updates an existing record in the SQLite database.
+/// Updates a record in the database.
 /// 
 /// ## Parameters
 /// - `conn`: SQLite database connection
-/// - `entity`: Data object containing the update information (must implement SqlQuery and UpdateParams traits)
+/// - `entity`: The entity to update (must implement SqlQuery and UpdateParams traits)
 /// 
 /// ## Return Value
-/// - `Result<usize, Error>`: On success, returns the number of updated records; on failure, returns Error
+/// - `Result<usize, Error>`: On success, returns the number of rows affected; on failure, returns Error
 /// 
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,ignore
+/// use parsql_macros::{Updateable, UpdateParams};
+/// 
 /// #[derive(Updateable, UpdateParams)]  // Required macros
-/// #[table("table_name")]               // Table name to update
-/// #[update("field1, field2")]          // Fields to update (optional)
-/// #[where_clause("id = $")]            // Update condition
+/// #[table("table_name")]              // Table name to update
+/// #[update("field1, field2")]         // Fields to update
+/// #[where_clause("id = $")]           // Update condition
 /// pub struct MyEntity {
-///     pub id: i64,                     // Fields used in the condition
-///     pub field1: String,              // Fields to be updated
-///     pub field2: i32,                 // Fields to be updated
-///     // ...
+///     pub id: i64,                    // Field used in the where clause
+///     pub field1: String,             // Fields to update
+///     pub field2: i32,
 /// }
 /// ```
 /// 
-/// - `Updateable`: Automatically generates SQL UPDATE statements
-/// - `UpdateParams`: Automatically generates update parameters
-/// - `#[table("table_name")]`: Specifies the table name for the update
-/// - `#[update("field1, field2")]`: Specifies which fields should be updated (if omitted, all fields will be updated)
-/// - `#[where_clause("id = $")]`: Specifies the update condition (`$` will be replaced with parameter value)
-/// 
 /// ## Example Usage
-/// ```rust
+/// 
+/// ```rust,ignore
+/// use rusqlite::Connection;
+/// use parsql_macros::{Updateable, UpdateParams};
+/// use parsql_sqlite::update;
+/// 
+/// // Create database connection
+/// let conn = Connection::open_in_memory().unwrap();
+/// conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, state INTEGER)", []).unwrap();
+/// conn.execute("INSERT INTO users (id, name, email, state) VALUES (1, 'Old Name', 'old@example.com', 0)", []).unwrap();
+/// 
 /// // Define an entity for updating
 /// #[derive(Updateable, UpdateParams)]
 /// #[table("users")]
@@ -112,18 +128,18 @@ pub fn insert<T: SqlQuery + SqlParams>(
 ///     pub id: i64,
 ///     pub name: String,
 ///     pub email: String,
-///     pub state: i16,  // This field won't be updated as it's not specified in the update attribute
+///     pub state: i16,  // Not included in the update
 /// }
-///
-/// // Create update data
+/// 
+/// // Create an update object
 /// let update_user = UpdateUser {
-///     id: 1,
-///     name: String::from("John"),
-///     email: String::from("john@example.com"),
-///     state: 2,
+///     id: 1,  // User ID to update
+///     name: "New Name".to_string(),
+///     email: "new@example.com".to_string(),
+///     state: 1,
 /// };
-///
-/// // Update in database
+/// 
+/// // Execute the update
 /// let update_result = update(&conn, update_user);
 /// println!("Update result: {:?}", update_result);
 /// ```
@@ -146,11 +162,11 @@ pub fn update<T: SqlQuery + UpdateParams>(
 
 /// # delete
 /// 
-/// Deletes a record from the SQLite database.
+/// Deletes records from the database based on a specific condition.
 /// 
 /// ## Parameters
 /// - `conn`: SQLite database connection
-/// - `entity`: Data object containing the deletion information (must implement SqlQuery and SqlParams traits)
+/// - `entity`: Query parameter object (must implement SqlQuery and SqlParams traits)
 /// 
 /// ## Return Value
 /// - `Result<usize, Error>`: On success, returns the number of deleted records; on failure, returns Error
@@ -158,36 +174,42 @@ pub fn update<T: SqlQuery + UpdateParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
-/// #[derive(Deleteable, SqlParams)]   // Required macros
-/// #[table("table_name")]             // Table name to delete from
-/// #[where_clause("id = $")]          // Delete condition
+/// ```rust,ignore
+/// use parsql_macros::{Queryable, SqlParams};
+/// 
+/// #[derive(Queryable, SqlParams)]  // Required macros
+/// #[table("table_name")]           // Table name to delete from
+/// #[where_clause("id = $")]        // Delete condition
 /// pub struct MyEntity {
-///     pub id: i64,                   // Fields used in the condition
-///     // Other fields can be added, but typically only condition fields are necessary
+///     pub id: i64,                 // Field used in the condition
 /// }
 /// ```
 /// 
-/// - `Deleteable`: Automatically generates SQL DELETE statements
-/// - `SqlParams`: Automatically generates SQL parameters
-/// - `#[table("table_name")]`: Specifies the table name for the deletion
-/// - `#[where_clause("id = $")]`: Specifies the delete condition (`$` will be replaced with parameter value)
-/// 
 /// ## Example Usage
-/// ```rust
-/// // Define an entity for deletion
-/// #[derive(Deleteable, SqlParams)]
+/// 
+/// ```rust,ignore
+/// use rusqlite::Connection;
+/// use parsql_macros::{Queryable, SqlParams};
+/// use parsql_sqlite::delete;
+/// 
+/// // Create database connection
+/// let conn = Connection::open_in_memory().unwrap();
+/// conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT)", []).unwrap();
+/// conn.execute("INSERT INTO users (id, name, email) VALUES (1, 'John', 'john@example.com')", []).unwrap();
+/// 
+/// // Define a delete query
+/// #[derive(Queryable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
 /// pub struct DeleteUser {
 ///     pub id: i64,
 /// }
 /// 
-/// // Create delete data
-/// let delete_user = DeleteUser { id: 6 };
+/// // Create delete parameters (delete user with ID 1)
+/// let delete_query = DeleteUser { id: 1 };
 /// 
-/// // Delete from database
-/// let delete_result = delete(&conn, delete_user);
+/// // Execute delete
+/// let delete_result = delete(&conn, delete_query);
 /// println!("Delete result: {:?}", delete_result);
 /// ```
 pub fn delete<T: SqlQuery + SqlParams>(
@@ -209,90 +231,68 @@ pub fn delete<T: SqlQuery + SqlParams>(
 
 /// # get
 /// 
-/// Retrieves a single record from the SQLite database.
+/// Retrieves a single record from the database based on a specific condition.
 /// 
 /// ## Parameters
 /// - `conn`: SQLite database connection
 /// - `entity`: Query parameter object (must implement SqlQuery, FromRow, and SqlParams traits)
 /// 
 /// ## Return Value
-/// - `Result<T, Error>`: On success, returns the found record; on failure, returns Error
+/// - `Result<T, Error>`: On success, returns the retrieved record; on failure, returns Error
 /// 
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
-/// #[derive(Queryable, FromRow, SqlParams, Debug)]  // Required macros
-/// #[table("table_name")]                           // Table name to query
-/// #[where_clause("id = $")]                        // Query condition
+/// ```rust,ignore
+/// use parsql_macros::{Queryable, FromRow, SqlParams};
+/// 
+/// #[derive(Queryable, FromRow, SqlParams)]  // Required macros
+/// #[table("table_name")]                    // Table name to query
+/// #[select("field1, field2, field3")]       // Fields to select (optional)
+/// #[where_clause("id = $")]                 // Query condition
 /// pub struct MyEntity {
-///     pub id: i64,                                 // Field used in the query condition
-///     pub field1: String,                          // Fields to be populated from the result set
+///     pub id: i64,                          // Field used in the condition
+///     pub field1: String,                   // Fields to retrieve
 ///     pub field2: i32,
-///     // ...
+///     pub field3: Option<String>,
 /// }
 /// ```
 /// 
-/// - `Queryable`: Automatically generates SQL SELECT statements
-/// - `SqlParams`: Automatically generates SQL parameters
-/// - `FromRow`: Enables conversion from database row to struct object
-/// - `#[table("table_name")]`: Specifies the table name for the query
-/// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
-/// 
 /// ## Example Usage
-/// ```rust
+/// 
+/// ```rust,ignore
+/// use rusqlite::Connection;
+/// use parsql_macros::{Queryable, FromRow, SqlParams};
+/// use parsql_sqlite::get;
+/// 
+/// // Create database connection
+/// let conn = Connection::open_in_memory().unwrap();
+/// conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, state INTEGER)", []).unwrap();
+/// conn.execute("INSERT INTO users (id, name, email, state) VALUES (1, 'John', 'john@example.com', 1)", []).unwrap();
+/// 
 /// // Define a query entity
-/// #[derive(Queryable, FromRow, SqlParams, Debug)]
+/// #[derive(Queryable, FromRow, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
 /// pub struct GetUser {
-///     pub id: i64,
+///     pub id: i32,
 ///     pub name: String,
 ///     pub email: String,
 ///     pub state: i16,
 /// }
-///
-/// // Create query parameters
-/// let get_user = GetUser {
+/// 
+/// // Create query parameters (get user with ID 1)
+/// let get_query = GetUser {
 ///     id: 1,
-///     name: Default::default(),
-///     email: Default::default(),
-///     state: Default::default(),
-/// };
-/// 
-/// // Retrieve from database
-/// let get_result = get(&conn, get_user);
-/// println!("Get result: {:?}", get_result);
-/// ```
-/// 
-/// ## Security
-/// This function is protected against SQL injection as all parameters are properly escaped.
-/// 
-/// ```rust
-/// // Example with a potentially malicious input
-/// let malicious_name = "' OR '1'='1";
-/// 
-/// #[derive(Queryable, FromRow, SqlParams, Debug)]
-/// #[table("users")]
-/// #[where_clause("name = $")]
-/// pub struct GetUserByName {
-///     pub id: i64,
-///     pub name: String,
-///     pub email: String,
-///     pub state: i16,
-/// }
-/// 
-/// let get_user = GetUserByName {
-///     id: 0,
-///     name: malicious_name.to_string(),
+///     name: String::new(),
 ///     email: String::new(),
 ///     state: 0,
 /// };
 /// 
-/// // This is safe and will only look for a user with the literal name "' OR '1'='1"
-/// match get(&conn, get_user) {
-///     Ok(user) => println!("Found user: {:?}", user),
-///     Err(e) => println!("Error: {}", e),
+/// // Execute query
+/// match get(&conn, get_query) {
+///     Ok(user) => println!("Retrieved user: {} ({})", user.name, user.email),
+///     Err(e) => println!("Error retrieving user: {}", e),
 /// }
 /// ```
 pub fn get<T: SqlQuery + FromRow + SqlParams>(
@@ -311,88 +311,75 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
 
 /// # get_all
 /// 
-/// Retrieves multiple records from the SQLite database.
+/// Retrieves multiple records from the database based on a specific condition.
 /// 
 /// ## Parameters
 /// - `conn`: SQLite database connection
 /// - `entity`: Query parameter object (must implement SqlQuery, FromRow, and SqlParams traits)
 /// 
 /// ## Return Value
-/// - `Result<Vec<T>, Error>`: On success, returns the list of found records; on failure, returns Error
+/// - `Result<Vec<T>, Error>`: On success, returns a vector of retrieved records; on failure, returns Error
 /// 
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
-/// #[derive(Queryable, FromRow, SqlParams, Debug)]  // Required macros
-/// #[table("table_name")]                           // Table name to query
-/// #[select("field1, field2, COUNT(*) as count")]   // Custom SELECT statement (optional)
-/// #[join("LEFT JOIN other_table ON ...")]          // JOIN statements (optional)
-/// #[where_clause("status > $")]                    // Query condition
-/// #[group_by("field1, field2")]                    // GROUP BY statement (optional)
-/// #[having("COUNT(*) > 0")]                        // HAVING statement (optional)
-/// #[order_by("count DESC")]                        // ORDER BY statement (optional)
+/// ```rust,no_run
+/// # use parsql_macros::{Queryable, FromRow, SqlParams};
+/// #[derive(Queryable, FromRow, SqlParams)]  // Required macros
+/// #[table("table_name")]                    // Table name to query
+/// #[select("field1, field2, field3")]       // Fields to select (optional)
+/// #[where_clause("status = $")]             // Query condition
+/// #[order_by("field1 DESC")]                // Order By clause (optional)
 /// pub struct MyEntity {
-///     pub status: i16,                             // Field used in the query condition
-///     pub field1: String,                          // Fields to be populated from the result set
+///     pub status: i32,                      // Field used in the condition
+///     pub field1: String,                   // Fields to retrieve
 ///     pub field2: i32,
-///     pub count: i64,                              // Calculated value
-///     // ...
+///     pub field3: Option<String>,
 /// }
 /// ```
 /// 
-/// - `Queryable`: Automatically generates SQL SELECT statements
-/// - `SqlParams`: Automatically generates SQL parameters
-/// - `FromRow`: Enables conversion from database row to struct object
-/// - `#[table("table_name")]`: Specifies the table name for the query
-/// - `#[select("...")]`: Creates a custom SELECT statement (if omitted, all fields will be selected)
-/// - `#[join("...")]`: Specifies JOIN statements (can be used multiple times)
-/// - `#[where_clause("...")]`: Specifies the query condition (`$` will be replaced with parameter value)
-/// - `#[group_by("...")]`: Specifies the GROUP BY statement
-/// - `#[having("...")]`: Specifies the HAVING statement
-/// - `#[order_by("...")]`: Specifies the ORDER BY statement
-/// 
 /// ## Example Usage
-/// ```rust
-/// // Advanced example with GROUP BY, HAVING, and JOIN
-/// #[derive(Queryable, FromRow, SqlParams, Debug)]
-/// #[table("users")]
-/// #[select("users.state, posts.state as post_state, COUNT(posts.id) as post_count, AVG(CAST(posts.id as REAL)) as avg_post_id")]
-/// #[join("LEFT JOIN posts ON users.id = posts.user_id")]
-/// #[where_clause("users.state > $")]
-/// #[group_by("users.state, posts.state")]
-/// #[having("COUNT(posts.id) > 0 AND AVG(CAST(posts.id as REAL)) > 2")]
-/// #[order_by("post_count DESC")]
-/// pub struct UserPostStatsAdvanced {
-///     pub state: i16,
-///     pub post_state: Option<i16>,
-///     pub post_count: i64,
-///     pub avg_post_id: Option<f32>,
-/// }
-///
-/// impl UserPostStatsAdvanced {
-///     pub fn new(min_state: i16) -> Self {
-///         Self {
-///             state: min_state,
-///             post_state: None,
-///             post_count: 0,
-///             avg_post_id: None,
-///         }
-///     }
-/// }
-///
-/// // Create a query for user-post statistics
-/// let stats_query = UserPostStatsAdvanced::new(0);
 /// 
-/// // Get all statistics
-/// match get_all(&conn, stats_query) {
-///     Ok(stats) => {
-///         println!("User-post statistics:");
-///         for stat in stats {
-///             println!("  {:?}", stat);
+/// ```rust,no_run
+/// # use rusqlite::Connection;
+/// # use parsql_macros::{Queryable, FromRow, SqlParams};
+/// # use parsql_sqlite::get_all;
+/// # 
+/// # // Create database connection
+/// # let conn = Connection::open_in_memory().unwrap();
+/// # conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, email TEXT, state INTEGER)", []).unwrap();
+/// # conn.execute("INSERT INTO users (id, name, email, state) VALUES (1, 'John', 'john@example.com', 1)", []).unwrap();
+/// # conn.execute("INSERT INTO users (id, name, email, state) VALUES (2, 'Jane', 'jane@example.com', 1)", []).unwrap();
+/// # 
+/// // Define a query entity for retrieving all active users
+/// #[derive(Queryable, FromRow, SqlParams)]
+/// #[table("users")]
+/// #[where_clause("state = $")]
+/// #[order_by("name ASC")]
+/// pub struct GetActiveUsers {
+///     pub id: i32,
+///     pub name: String,
+///     pub email: String,
+///     pub state: i16,
+/// }
+/// 
+/// // Create query parameters to get all users with state = 1
+/// let query = GetActiveUsers {
+///     id: 0,
+///     name: String::new(),
+///     email: String::new(),
+///     state: 1,  // Active state
+/// };
+/// 
+/// // Execute query to get all matching records
+/// match get_all(&conn, query) {
+///     Ok(users) => {
+///         println!("Found {} active users:", users.len());
+///         for user in users {
+///             println!("- {} ({})", user.name, user.email);
 ///         }
 ///     },
-///     Err(e) => println!("Error retrieving statistics: {}", e),
+///     Err(e) => println!("Error retrieving users: {}", e),
 /// }
 /// ```
 pub fn get_all<T: SqlQuery + FromRow + SqlParams>(

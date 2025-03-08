@@ -1,5 +1,5 @@
 use tokio_postgres::{Error, Row};
-use parsql_core::{SqlQuery, SqlParams, UpdateParams, FromRow};
+use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 
 /// # insert
 /// 

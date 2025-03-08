@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-rusqlite = "0.33.0"
+rusqlite = "0.34.0"
 parsql = { path = "../../", features = ["sqlite"] }
 

@@ -23,16 +23,12 @@ fn extract_fields_from_where_clause(input: &str) -> Vec<String> {
 mod query_builder {
     pub(crate) struct SafeQueryBuilder {
         pub query: String,
-        pub params: Vec<String>,
-        pub param_count: usize,
     }
 
     impl SafeQueryBuilder {
         pub fn new() -> Self {
             Self {
                 query: String::new(),
-                params: Vec::new(),
-                param_count: 0,
             }
         }
 
@@ -139,8 +135,6 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         .filter_map(|col| fields.iter().find(|field| *field == col))
         .cloned()
         .collect();
-
-    let column_names = sorted_fields.iter().map(|f| f.as_str());
 
     // Adjust the where_clause based on the number of updated columns
     let mut count = sorted_fields.len() + 1;
@@ -459,7 +453,9 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .enumerate()
         .map(|(_, c)| {
             if c == '$' {
-                format!("${}", count)
+                let new_char = format!("${}", count);
+                count += 1;
+                new_char
             } else {
                 c.to_string()
             }

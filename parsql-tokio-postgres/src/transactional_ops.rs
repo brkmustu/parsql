@@ -1,4 +1,4 @@
-use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
+// use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
 use deadpool_postgres::Transaction;
 use tokio_postgres::{types::ToSql, Row, Error};
 

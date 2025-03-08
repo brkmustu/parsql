@@ -1,13 +1,6 @@
 use proc_macro::TokenStream;
 
 mod crud_impl;
-mod sql_sanitizer;
-
-// SQL injection koruması için yardımcı özellikler
-trait SqlSanitizer {
-    fn sanitize_identifier(&self) -> String;
-    fn sanitize_value(&self) -> String;
-}
 
 #[proc_macro_derive(Updateable, attributes(table, where_clause, update))]
 pub fn derive_updateable(input: TokenStream) -> TokenStream {
