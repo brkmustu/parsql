@@ -12,13 +12,13 @@ pub trait SqlQuery {
     fn query() -> String;
 }
 pub trait SqlParams {
-    fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
+    fn params(&self) -> Vec<&(dyn postgres::types::ToSql + Sync)>;
 }
 pub trait UpdateParams {
-    fn params(&self) -> Vec<&(dyn ToSql + Sync)>;
+    fn params(&self) -> Vec<&(dyn postgres::types::ToSql + Sync)>;
 }
 pub trait FromRow {
-    fn from_row(row: &Row) -> Result<Self, Error>
+    fn from_row(row: &postgres::Row) -> Result<Self, postgres::Error>
     where
         Self: Sized;
 }

@@ -609,6 +609,68 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+// Birleştirilmiş derive_from_row fonksiyonu
+pub fn derive_from_row(input: TokenStream) -> TokenStream {
+    let ast: syn::DeriveInput = syn::parse(input.clone()).unwrap();
+    let name = &ast.ident;
+    let fields = match &ast.data {
+        Data::Struct(data) => {
+            match &data.fields {
+                Fields::Named(fields) => &fields.named,
+                _ => panic!("FromRow only supports structs with named fields"),
+            }
+        },
+        _ => panic!("FromRow only supports structs"),
+    };
+
+    // Feature flag'lere göre farklı kod üretimi
+    #[cfg(feature = "sqlite")]
+    {
+        // SQLite için kod üretimi
+        let field_names = fields.iter().map(|f| f.ident.as_ref().unwrap());
+        let field_strings = fields
+            .iter()
+            .map(|f| f.ident.as_ref().unwrap().to_string());
+
+        let expanded = quote! {
+            impl FromRow for #name {
+                fn from_row(row: &Row) -> Result<Self, Error> {
+                    Ok(Self {
+                        #(#field_names: row.get(#field_strings)?),*
+                    })
+                }
+            }
+        };
+
+        TokenStream::from(expanded)
+    }
+    #[cfg(not(feature = "sqlite"))]
+    {
+        let name = &input.ident;
+        
+        // PostgreSQL, Tokio PostgreSQL veya diğer veritabanları için kod üretimi
+        // Alan adlarını ve tiplerini çıkarır.
+        let field_initializers = fields.iter().map(|field| {
+            let name = &field.ident;
+            quote! {
+                #name: row.get(stringify!(#name))
+            }
+        });
+
+        let gen = quote! {
+            impl FromRow for #name {
+                fn from_row(row: &Row) -> Result<Self, Error> {
+                    Ok(Self {
+                        #(#field_initializers),*
+                    })
+                }
+            }
+        };
+        
+        gen.into()
+    }
+}
+
 pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;

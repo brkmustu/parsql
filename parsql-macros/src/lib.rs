@@ -55,12 +55,19 @@ mod security {
 // FromRow türetmesi için güvenlik kontrolleri
 #[proc_macro_derive(FromRow)]
 pub fn derive_from_row(input: TokenStream) -> TokenStream {
+    #[cfg(feature = "postgres")]
+    {
+        return crud_impl::derive_from_row_postgres(input);
+    }
+    
     #[cfg(feature = "sqlite")]
     {
         return crud_impl::derive_from_row_sqlite(input);
     }
-    #[cfg(any(feature = "postgres", feature = "tokio-postgres", feature = "deadpool-postgres"))]
+    
+    #[cfg(not(any(feature = "postgres", feature = "sqlite")))]
     {
-        return crud_impl::derive_from_row_postgres(input);
+        panic!("En az bir veritabanı feature'ı etkinleştirilmelidir (postgres veya sqlite)");
     }
 }
+

@@ -1,7 +1,5 @@
-use parsql::{
-    macros::{FromRow, Queryable, SqlParams},
-    tokio_postgres::{FromRow, SqlParams, SqlQuery},
-};
+use parsql::macros::Queryable;
+use parsql::tokio_postgres::{SqlQuery, SqlParams, FromRow};
 use tokio_postgres::{types::ToSql, Row, Error};
 
 /// # GetUser
@@ -9,8 +7,7 @@ use tokio_postgres::{types::ToSql, Row, Error};
 /// Data model used for querying a user by ID.
 /// 
 /// ## Attributes
-/// - `#[derive(Queryable, SqlParams, FromRow, Debug)]`: Makes this type support query generation, SQL parameter generation,
-///    database row to object conversion, and debugging.
+/// - `#[derive(Queryable<PostgreSql>)]`: Makes this type support query generation
 /// - `#[table("users")]`: Specifies that this model will be used with the 'users' table.
 /// - `#[where_clause("id = $")]`: Specifies that the query will run with the 'WHERE id = ?' condition.
 /// 
@@ -29,7 +26,7 @@ use tokio_postgres::{types::ToSql, Row, Error};
 /// let get_result = get(&client, &get_user).await;
 /// println!("Get result: {:?}", get_result);
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[where_clause("id = $")]
 pub struct GetUser {
@@ -50,13 +47,29 @@ impl GetUser {
     }
 }
 
+impl SqlParams for GetUser {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.id]
+    }
+}
+
+impl FromRow for GetUser {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            email: row.try_get("email")?,
+            state: row.try_get("state")?,
+        })
+    }
+}
+
 /// # GetAllUsers
 /// 
 /// Data model used for querying users by email address.
 /// 
 /// ## Attributes
-/// - `#[derive(Queryable, SqlParams, FromRow, Debug)]`: Makes this type support query generation, SQL parameter generation,
-///    database row to object conversion, and debugging.
+/// - `#[derive(Queryable<PostgreSql>)]`: Makes this type support query generation
 /// - `#[table("users")]`: Specifies that this model will be used with the 'users' table.
 /// - `#[where_clause("email = $")]`: Specifies that the query will run with the 'WHERE email = ?' condition.
 /// 
@@ -72,7 +85,7 @@ impl GetUser {
 /// 
 /// let users = get_all(&client, &user_by_email).await;
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[where_clause("email = $")]
 pub struct GetAllUsers {
@@ -82,13 +95,29 @@ pub struct GetAllUsers {
     pub state: i16,
 }
 
+impl SqlParams for GetAllUsers {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.email]
+    }
+}
+
+impl FromRow for GetAllUsers {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            email: row.try_get("email")?,
+            state: row.try_get("state")?,
+        })
+    }
+}
+
 /// # SelectUserWithPosts
 /// 
 /// Complex data model used for querying a user with their posts and comments.
 /// 
 /// ## Attributes
-/// - `#[derive(Queryable, SqlParams, FromRow, Debug)]`: Makes this type support query generation, SQL parameter generation,
-///    database row to object conversion, and debugging.
+/// - `#[derive(Queryable<PostgreSql>)]`: Makes this type support query generation
 /// - `#[table("users")]`: Specifies that the main table is 'users'.
 /// - `#[select("users.id, users.name, users.email...")]`: Specifies the columns to return in the query result.
 /// - `#[join("INNER JOIN posts...")]`: Adds posts table with INNER JOIN to the users table.
@@ -113,7 +142,7 @@ pub struct GetAllUsers {
 /// 
 /// println!("Get user with posts: {:?}", get_user_with_posts);
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[select("users.id, users.name, users.email, users.state as user_state, posts.id as post_id, posts.content, posts.state as post_state, comments.content as comment")]
 #[join("INNER JOIN posts ON users.id = posts.user_id")]
@@ -145,14 +174,34 @@ impl SelectUserWithPosts {
     }
 }
 
+impl SqlParams for SelectUserWithPosts {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.id]
+    }
+}
+
+impl FromRow for SelectUserWithPosts {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            id: row.try_get("id")?,
+            name: row.try_get("name")?,
+            email: row.try_get("email")?,
+            user_state: row.try_get("user_state")?,
+            post_id: row.try_get("post_id")?,
+            content: row.try_get("content")?,
+            post_state: row.try_get("post_state")?,
+            comment: row.try_get("comment")?,
+        })
+    }
+}
+
 /// # UserStateStats
 /// 
 /// Data model used for querying user statistics by status.
 /// Demonstrates GROUP BY and ORDER BY capabilities.
 /// 
 /// ## Attributes
-/// - `#[derive(Queryable, SqlParams, FromRow, Debug)]`: Makes this type support query generation, SQL parameter generation,
-///    database row to object conversion, and debugging.
+/// - `#[derive(Queryable<PostgreSql>)]`: Makes this type support query generation
 /// - `#[table("users")]`: Specifies that the main table is 'users'.
 /// - `#[select("users.state, COUNT(*) as user_count")]`: Counts users for each state.
 /// - `#[where_clause("state > $")]`: Filters states greater than the specified value.
@@ -165,7 +214,7 @@ impl SelectUserWithPosts {
 /// let user_state_stats = get_all(&client, &UserStateStats::new(0)).await;
 /// println!("User state stats: {:?}", user_state_stats);
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[select("users.state, COUNT(*) as user_count")]
 #[where_clause("state > $")]
@@ -182,6 +231,21 @@ impl UserStateStats {
             state: min_state,
             user_count: 0,
         }
+    }
+}
+
+impl SqlParams for UserStateStats {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.state]
+    }
+}
+
+impl FromRow for UserStateStats {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            state: row.try_get("state")?,
+            user_count: row.try_get("user_count")?,
+        })
     }
 }
 
@@ -205,7 +269,7 @@ impl UserStateStats {
 /// let user_post_stats = get_all(&client, &UserPostStats::new(0)).await;
 /// println!("User post stats: {:?}", user_post_stats);
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[select("users.state, posts.state as post_state, COUNT(posts.id) as post_count")]
 #[join("LEFT JOIN posts ON users.id = posts.user_id")]
@@ -228,6 +292,22 @@ impl UserPostStats {
     }
 }
 
+impl SqlParams for UserPostStats {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.state]
+    }
+}
+
+impl FromRow for UserPostStats {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            state: row.try_get("state")?,
+            post_state: row.try_get("post_state")?,
+            post_count: row.try_get("post_count")?,
+        })
+    }
+}
+
 /// # UserStateStatsFiltered
 /// 
 /// User state statistics query with HAVING filter.
@@ -246,7 +326,7 @@ impl UserPostStats {
 /// let user_state_stats_filtered = get_all(&client, &UserStateStatsFiltered::new(0)).await;
 /// println!("User state stats (filtered with HAVING): {:?}", user_state_stats_filtered);
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[select("users.state, COUNT(*) as user_count")]
 #[where_clause("state > $")]
@@ -264,6 +344,21 @@ impl UserStateStatsFiltered {
             state: min_state,
             user_count: 0,
         }
+    }
+}
+
+impl SqlParams for UserStateStatsFiltered {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.state]
+    }
+}
+
+impl FromRow for UserStateStatsFiltered {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            state: row.try_get("state")?,
+            user_count: row.try_get("user_count")?,
+        })
     }
 }
 
@@ -287,7 +382,7 @@ impl UserStateStatsFiltered {
 /// let user_post_stats_advanced = get_all(&client, &UserPostStatsAdvanced::new(0)).await;
 /// println!("User post stats (advanced with HAVING): {:?}", user_post_stats_advanced);
 /// ```
-#[derive(Queryable, SqlParams, FromRow, Debug)]
+#[derive(Queryable, Debug)]
 #[table("users")]
 #[select("users.state, posts.state as post_state, COUNT(posts.id) as post_count, AVG(posts.id)::REAL as avg_post_id")]
 #[join("LEFT JOIN posts ON users.id = posts.user_id")]
@@ -310,5 +405,22 @@ impl UserPostStatsAdvanced {
             post_count: 0,
             avg_post_id: None,
         }
+    }
+}
+
+impl SqlParams for UserPostStatsAdvanced {
+    fn params(&self) -> Vec<&(dyn ToSql + Sync)> {
+        vec![&self.state]
+    }
+}
+
+impl FromRow for UserPostStatsAdvanced {
+    fn from_row(row: &Row) -> Result<Self, Error> {
+        Ok(Self {
+            state: row.try_get("state")?,
+            post_state: row.try_get("post_state")?,
+            post_count: row.try_get("post_count")?,
+            avg_post_id: row.try_get("avg_post_id")?,
+        })
     }
 }

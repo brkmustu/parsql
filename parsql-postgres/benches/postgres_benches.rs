@@ -62,7 +62,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 email: "SampleEmail".to_string(),
                 state: 1,
             });
-            let _ = get(&mut db, user);
+            let _ = get(&mut db, &user);
         })
     });
 }
