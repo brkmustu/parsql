@@ -1,25 +1,25 @@
 # parsql-postgres
 
-Parsql için PostgreSQL entegrasyon küfesidir. Bu paket, parsql'in PostgreSQL veritabanlarıyla çalışmasını sağlayan **senkron** API'leri içerir.
+PostgreSQL integration crate for parsql. This package provides **synchronous** APIs that enable parsql to work with PostgreSQL databases.
 
-## Özellikler
+## Features
 
-- Senkron PostgreSQL işlemleri
-- Otomatik SQL sorgu oluşturma 
-- Güvenli parametre yönetimi
-- Generic CRUD işlemleri (get, insert, update, delete)
-- Veritabanı satırlarını struct'lara dönüştürme
+- Synchronous PostgreSQL operations
+- Automatic SQL query generation
+- Secure parameter management
+- Generic CRUD operations (get, insert, update, delete)
+- Conversion of database rows to structs
 
-## Kurulum
+## Installation
 
-Cargo.toml dosyanıza şu şekilde ekleyin:
+Add to your Cargo.toml file as follows:
 
 ```toml
 [dependencies]
 parsql = { version = "0.3.0", features = ["postgres"] }
 ```
 
-veya doğrudan bu paketi kullanmak isterseniz:
+or if you want to use this package directly:
 
 ```toml
 [dependencies]
@@ -28,23 +28,23 @@ parsql-macros = "0.3.0"
 postgres = "0.19"
 ```
 
-## Temel Kullanım
+## Basic Usage
 
-Bu paket, PostgreSQL veritabanı ile çalışırken **senkron işlemler** kullanır. Bu, tokio-postgres gibi async/await kullanımı gerektirmediği anlamına gelir.
+This package uses **synchronous operations** when working with PostgreSQL databases. This means it doesn't require async/await usage like tokio-postgres.
 
-### Bağlantı Kurma
+### Establishing a Connection
 
 ```rust
 use postgres::{Client, NoTls, Error};
 
 fn main() -> Result<(), Error> {
-    // PostgreSQL bağlantısı oluşturma
+    // Create PostgreSQL connection
     let mut client = Client::connect(
         "host=localhost user=postgres password=postgres dbname=test",
         NoTls,
     )?;
     
-    // Örnek tablo oluşturma
+    // Create example table
     client.execute(
         "CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -61,9 +61,9 @@ fn main() -> Result<(), Error> {
 }
 ```
 
-## CRUD İşlemleri
+## CRUD Operations
 
-### Veri Okuma (Get) İşlemi
+### Reading Data (Get)
 
 ```rust
 use parsql::{
@@ -100,16 +100,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         NoTls,
     )?;
     
-    // Kullanımı
+    // Usage
     let get_user = GetUser::new(1);
     let get_result = get(&mut client, get_user)?;
     
-    println!("Kullanıcı: {:?}", get_result);
+    println!("User: {:?}", get_result);
     Ok(())
 }
 ```
 
-### Veri Ekleme (Insert) İşlemi
+### Adding Data (Insert)
 
 ```rust
 use parsql::{
@@ -140,13 +140,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     let insert_result = insert(&mut client, insert_user)?;
-    println!("Eklenen kayıt ID: {}", insert_result);
+    println!("Inserted record ID: {}", insert_result);
     
     Ok(())
 }
 ```
 
-### Veri Güncelleme (Update) İşlemi
+### Updating Data (Update)
 
 ```rust
 use parsql::{
@@ -175,19 +175,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let update_user = UpdateUser {
         id: 1,
-        name: String::from("Ali Güncellendi"),
+        name: String::from("Ali Updated"),
         email: String::from("ali.updated@gmail.com"),
         state: 2,
     };
     
     let result = update(&mut client, update_user)?;
-    println!("Güncellenen kayıt sayısı: {}", result);
+    println!("Number of records updated: {}", result);
     
     Ok(())
 }
 ```
 
-### Veri Silme (Delete) İşlemi
+### Deleting Data (Delete)
 
 ```rust
 use parsql::{
@@ -213,14 +213,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let delete_user = DeleteUser { id: 1 };
     let result = delete(&mut client, delete_user)?;
     
-    println!("Silinen kayıt sayısı: {}", result);
+    println!("Number of records deleted: {}", result);
     Ok(())
 }
 ```
 
-## İşlem (Transaction) Kullanımı
+## Using Transactions
 
-Standard postgres kütüphanesindeki Transaction özelliğini kullanabilirsiniz:
+You can use the Transaction feature provided by the standard postgres library:
 
 ```rust
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -229,10 +229,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         NoTls,
     )?;
     
-    // İşlem başlat
+    // Start transaction
     let mut tx = client.transaction()?;
     
-    // İşlem içinde sorgu yap
+    // Perform queries within transaction
     let insert_user = InsertUser {
         name: "Mehmet".to_string(),
         email: "mehmet@parsql.com".to_string(),
@@ -241,17 +241,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     let id = insert(&mut tx, insert_user)?;
     
-    // İşlemi tamamla
+    // Complete the transaction
     tx.commit()?;
     
-    println!("Ekleme işlemi başarılı, ID: {}", id);
+    println!("Insert operation successful, ID: {}", id);
     Ok(())
 }
 ```
 
-## Gelişmiş Özellikler
+## Advanced Features
 
-### Join Kullanımı
+### Using Joins
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -266,7 +266,7 @@ pub struct UserWithPosts {
 }
 ```
 
-### Gruplama ve Sıralama
+### Grouping and Ordering
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -281,12 +281,12 @@ pub struct UserStats {
 }
 ```
 
-### Özel Select İfadeleri
+### Custom Select Statements
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table("users")]
-#[select("id, name, email, CASE WHEN state = 1 THEN 'Aktif' ELSE 'Pasif' END as status")]
+#[select("id, name, email, CASE WHEN state = 1 THEN 'Active' ELSE 'Inactive' END as status")]
 #[where_clause("id = $")]
 pub struct UserWithStatus {
     pub id: i64,
@@ -296,47 +296,47 @@ pub struct UserWithStatus {
 }
 ```
 
-## SQL Sorgularını İzleme
+## SQL Query Tracing
 
-Oluşturulan SQL sorgularını görmek için `PARSQL_TRACE` çevre değişkenini ayarlayabilirsiniz:
+To see the SQL queries being generated, you can set the `PARSQL_TRACE` environment variable:
 
 ```sh
 PARSQL_TRACE=1 cargo run
 ```
 
-Bu, postgres için oluşturulan tüm sorguları konsola yazdıracaktır.
+This will print all queries generated for postgres to the console.
 
-## Tokio-Postgres ile Farklar
+## Differences from Tokio-Postgres
 
-Bu paketteki en önemli fark, tokio-postgres paketinin aksine bu paketin **senkron** API kullanmasıdır:
+The most important difference in this package is that it uses a **synchronous** API, unlike the tokio-postgres package:
 
-1. **Senkron İşlemler**: Bu paket, async/await kullanmaz ve senkron işlemler yapar.
-2. **İstemci Referansı**: Fonksiyonlara istemciyi `&mut client` olarak iletmeniz gerekir.
-3. **Tokio Runtime Gerektirmez**: Tokio runtime'a ihtiyaç duymadan kullanabilirsiniz.
+1. **Synchronous Operations**: This package doesn't use async/await and performs synchronous operations.
+2. **Client Reference**: You need to pass the client to functions as `&mut client`.
+3. **No Tokio Runtime Required**: You can use it without needing a Tokio runtime.
 
-## Performans İpuçları
+## Performance Tips
 
-1. **Prepared Statements**: postgres, sorguları prepared statement olarak çalıştırır ve parsql bu özelliği kullanır, bu SQL enjeksiyon saldırılarına karşı korunmanıza yardımcı olur.
+1. **Prepared Statements**: postgres runs queries as prepared statements, and parsql uses this feature, which helps protect against SQL injection attacks.
 
-2. **Toplu İşlemler**: Birden çok işlemi Transaction içinde yapın:
+2. **Batch Operations**: Perform multiple operations within a Transaction:
 
    ```rust
    let mut tx = client.transaction()?;
-   // İşlemlerinizi burada yapın
+   // Perform your operations here
    tx.commit()?;
    ```
 
-## Hata Yakalama
+## Error Handling
 
-İşlemler sırasında oluşabilecek hataları yakalamak ve işlemek için Rust'ın `Result` mekanizmasını kullanın:
+Use Rust's `Result` mechanism to catch and handle errors that may occur during operations:
 
 ```rust
 match get(&mut client, get_user) {
-    Ok(user) => println!("Kullanıcı bulundu: {:?}", user),
-    Err(e) => eprintln!("Hata oluştu: {}", e),
+    Ok(user) => println!("User found: {:?}", user),
+    Err(e) => eprintln!("Error occurred: {}", e),
 }
 ```
 
-## Tam Örnek Proje
+## Complete Example Project
 
-Tam bir örnek proje için parsql ana deposundaki [examples/postgres](../examples/postgres) dizinine bakabilirsiniz.
+For a complete example project, see the [examples/postgres](../examples/postgres) directory in the main parsql repository. 

@@ -1,21 +1,82 @@
 # parsql
-Deneyimsel sql yardımcısı
+Deneyimsel SQL yardımcısı
 
-### Küfe'nin yüklenmesi
+## Ne İşe Yarar?
 
-Uygulamanıza küfeyi yüklerken hangi veritabanı ile çalışacağınızı 'feature' olarak belirtmeniz gerekiyor. Örneğin 'postgresql' ile çalışacaksanız ve 'tokio' runtime kullanıyorsanız, Cargo.toml dosyanıza paketi aşağıdaki şekilde eklemeniz gerekiyor;
+Parsql, SQL sorgularınızı doğrudan Rust struct'ları üzerinden yönetmenize olanak tanıyan bir kütüphanedir. Temel amacı, veritabanı işlemlerini daha güvenli ve daha az kod ile gerçekleştirmenizi sağlamaktır. Bu kütüphane ile:
 
+- Struct tanımları üzerinden otomatik SQL sorguları oluşturabilirsiniz
+- Veritabanı parametrelerini güvenli bir şekilde yönetebilirsiniz
+- Generic CRUD işlemlerini (ekleme, okuma, güncelleme, silme) kolayca yapabilirsiniz
+- Dinamik SQL oluşturabilir ve karmaşık sorgular çalıştırabilirsiniz
+
+Parsql standart bir ORM değildir. Daha çok, SQL yazımını ve kullanımını basitleştirmeye odaklanır.
+
+## Desteklenen Veritabanları
+
+Parsql aşağıdaki veritabanı sistemlerini desteklemektedir:
+
+- **SQLite** (senkron): `parsql-sqlite` paketi
+- **PostgreSQL** (senkron): `parsql-postgres` paketi
+- **Tokio PostgreSQL** (asenkron): `parsql-tokio-postgres` paketi
+
+## Küfe'nin Yüklenmesi
+
+Uygulamanıza küfeyi yüklerken hangi veritabanı ile çalışacağınızı 'feature' olarak belirtmeniz gerekiyor. Cargo.toml dosyanıza paketi şu şekilde ekleyebilirsiniz:
+
+### SQLite için
 ```rust
-parsql = { version = "0.2.0", features = ["tokio-postgres"] }
+parsql = { version = "0.3.0", features = ["sqlite"] }
 ```
 
-### Ne işe yarar?
+### PostgreSQL için
+```rust
+parsql = { version = "0.3.0", features = ["postgres"] }
+```
 
-Temel sql cümleciklerinin direkt "struct" üzerinden yönetilebilmesini sağlayacak, küfe içindeki "generic crud" işlemlerini kullanılabilir hale getiren yardımcı makro, trait ve fonksiyonlar içerir.
+### Tokio PostgreSQL için
+```rust
+parsql = { version = "0.3.0", features = ["tokio-postgres"] }
+```
 
-Örneğin;
+### Deadpool PostgreSQL bağlantı havuzu için
+```rust
+parsql = { version = "0.3.0", features = ["deadpool-postgres"] }
+```
+
+## Temel Özellikler
+
+### Procedural Makrolar
+Parsql, veritabanı işlemlerini kolaylaştırmak için çeşitli procedural makrolar sunar:
+
+- `#[derive(Queryable)]` - Okuma (select) işlemleri için
+- `#[derive(Insertable)]` - Ekleme işlemleri için
+- `#[derive(Updateable)]` - Güncelleme işlemleri için
+- `#[derive(FromRow)]` - Veritabanı sonuçlarını nesnelere dönüştürmek için
+
+### Öznitelikler
+Sorgularınızı özelleştirmek için çeşitli öznitelikler kullanabilirsiniz:
+
+- `#[table("tablo_adi")]` - Tablo adını belirtmek için
+- `#[where_clause("id = $")]` - WHERE koşulunu belirtmek için
+- `#[select("alan1, alan2")]` - SELECT ifadesini özelleştirmek için
+- `#[update("alan1, alan2")]` - UPDATE ifadesini özelleştirmek için
+- `#[join("LEFT JOIN tablo2 ON tablo1.id = tablo2.fk_id")]` - JOIN ifadeleri için
+- `#[group_by("alan1")]` - GROUP BY ifadesi için
+- `#[order_by("alan1 DESC")]` - ORDER BY ifadesi için
+- `#[having("COUNT(*) > 5")]` - HAVING ifadesi için
+
+### SQL İzleme
+Geliştirme sırasında oluşturulan SQL sorgularını izlemek için:
+
+```sh
+PARSQL_TRACE=1 cargo run
+```
+
+## Basit Kullanım Örneği
 
 ```rust
+// Bir kayıt almak için
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table("users")]
 #[where_clause("id = $")]
@@ -23,75 +84,31 @@ pub struct GetUser {
     pub id: i64,
     pub name: String,
     pub email: String,
-    pub state: i16,
 }
 
-impl GetUser {
-    pub fn new(id: i64) -> Self {
-        Self {
-            id,
-            name: Default::default(),
-            email: Default::default(),
-            state: Default::default(),
-        }
-    }
-}
+// SQLite için kullanım
+let get_user = GetUser::new(1);
+let user = get(&conn, get_user);
+
+// Tokio-Postgres için kullanım
+let get_user = GetUser::new(1);
+let user = get(&client, get_user).await;
 ```
 
-gibi bir procedural makro kullanımı ile, desteklenen (şimdilik sqlite ve postgresql) veritabanlarında küfe'de tanımlanan "get" fonksiyonunu, bu "struct" için uygulayabilir hale getirmiş oluyoruz.
+## Detaylı Dökümantasyon
 
-yukarıdaki gibi bir struct tanımlaması yaptıktan sonra eklemeniz gereken toplam 8 adet bağımlılık söz konusu (aslında sadece get işleminde bu kadar çok bağımlılık var, diğerlerinde 5 adet bağımlılık ile generic fonksiyon kullanılabiliyor);
+Her veritabanı adaptörü için daha detaylı bilgi ve örnekler, ilgili alt paketlerin README dosyalarında bulunmaktadır:
 
-```rust
-use parsql::{
-    core::Queryable,
-    macros::{FromRow, Queryable, SqlParams},
-    tokio_postgres::{FromRow, SqlParams},
-};
-use tokio_postgres::{types::ToSql, Row};
-```
+- [SQLite Dökümantasyonu](./parsql-sqlite/README.md)
+- [PostgreSQL Dökümantasyonu](./parsql-postgres/README.md)
+- [Tokio PostgreSQL Dökümantasyonu](./parsql-tokio-postgres/README.md)
 
-Şunun gibi;
+GitHub'daki [örnekler klasöründe](./examples) her veritabanı tipi için kapsamlı örnek projeler bulabilirsiniz.
 
-```rust
-    let get_user = GetUser::new(1);
-    let get_result = get(&client, get_user).await;
+## 0.3.0 Sürümündeki Değişiklikler
 
-    println!("get user result: {:?}", get_user_result);
-```
-
-github'da projenin repository'sinde, "examples" klasörü altında "sqlite" ve "tokio-postgres" örnek projelerinde, örnek kullanımlar mevcuttur.
-
-### Gruplama ve Sıralama Özellikleri
-
-Sorgularınızda GROUP BY ve ORDER BY ifadelerini kullanmak için `group_by` ve `order_by` özniteliklerini kullanabilirsiniz:
-
-```rust
-#[derive(Queryable, FromRow, SqlParams, Debug)]
-#[table("users")]
-#[select("users.state, COUNT(*) as user_count")]
-#[group_by("users.state")]
-#[order_by("user_count DESC")]
-pub struct UserStateStats {
-    pub state: i16,
-    pub user_count: i64,
-}
-```
-
-Bu öznitelikler opsiyoneldir ve ihtiyacınıza göre birlikte veya ayrı ayrı kullanılabilir. Örneğin:
-
-```rust
-// Sadece sıralama
-#[derive(Queryable, FromRow, SqlParams)]
-#[table("users")]
-#[order_by("created_at DESC")]
-pub struct RecentUsers { ... }
-
-// Join ve gruplama birlikte
-#[derive(Queryable, FromRow, SqlParams)]
-#[table("users")]
-#[select("users.state, COUNT(posts.id) as post_count")]
-#[join("LEFT JOIN posts ON users.id = posts.user_id")]
-#[group_by("users.state")]
-pub struct UserPostCounts { ... }
-```
+- `join`, `group_by`, `order_by` ve `having` öznitelikleri eklendi
+- `PARSQL_TRACE` çevre değişkeni desteği eklendi
+- Öznitelik isimleri güncellendi (`table_name`→`table`, `update_clause`→`update`, `select_clause`→`select`)
+- `SqlQuery` trait'i eklendi ve trait yapısı sadeleştirildi
+- Temel trait'ler `parsql-core` crate'inde toplandı

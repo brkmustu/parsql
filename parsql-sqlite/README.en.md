@@ -1,25 +1,25 @@
 # parsql-sqlite
 
-Parsql için SQLite entegrasyon küfesidir. Bu paket, parsql'in SQLite veritabanlarıyla çalışmasını sağlayan senkron API'leri içerir.
+SQLite integration crate for parsql. This package provides synchronous APIs that enable parsql to work with SQLite databases.
 
-## Özellikler
+## Features
 
-- Senkron SQLite işlemleri
-- Otomatik SQL sorgu oluşturma
-- Güvenli parametre yönetimi
-- Generic CRUD işlemleri (get, insert, update)
-- Veritabanı satırlarını struct'lara dönüştürme
+- Synchronous SQLite operations
+- Automatic SQL query generation
+- Secure parameter management
+- Generic CRUD operations (get, insert, update)
+- Conversion of database rows to structs
 
-## Kurulum
+## Installation
 
-Cargo.toml dosyanıza şu şekilde ekleyin:
+Add to your Cargo.toml file as follows:
 
 ```toml
 [dependencies]
 parsql = { version = "0.3.0", features = ["sqlite"] }
 ```
 
-veya doğrudan bu paketi kullanmak isterseniz:
+or if you want to use this package directly:
 
 ```toml
 [dependencies]
@@ -27,20 +27,20 @@ parsql-sqlite = "0.3.0"
 parsql-macros = "0.3.0"
 ```
 
-## Temel Kullanım
+## Basic Usage
 
-Bu paket, SQLite veritabanı ile çalışırken **senkron işlemler** kullanır. Bu, async/await kullanımı gerektirmediği anlamına gelir.
+This package uses **synchronous operations** when working with SQLite databases. This means it doesn't require async/await usage.
 
-### Bağlantı Kurma
+### Establishing a Connection
 
 ```rust
 use rusqlite::Connection;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // SQLite bağlantısı oluşturma
-    let conn = Connection::open("veritabani.db")?;
+    // Create SQLite connection
+    let conn = Connection::open("database.db")?;
     
-    // Örnek tablo oluşturma
+    // Create example table
     conn.execute(
         "CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
@@ -57,9 +57,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## CRUD İşlemleri
+## CRUD Operations
 
-### Veri Okuma (Get) İşlemi
+### Reading Data (Get)
 
 ```rust
 use parsql::{
@@ -91,18 +91,18 @@ impl GetUser {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open("veritabani.db")?;
+    let conn = Connection::open("database.db")?;
     
-    // Kullanımı
+    // Usage
     let get_user = GetUser::new(1);
     let get_result = get(&conn, get_user)?;
     
-    println!("Kullanıcı: {:?}", get_result);
+    println!("User: {:?}", get_result);
     Ok(())
 }
 ```
 
-### Veri Ekleme (Insert) İşlemi
+### Adding Data (Insert)
 
 ```rust
 use parsql::{
@@ -121,7 +121,7 @@ pub struct InsertUser {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open("veritabani.db")?;
+    let conn = Connection::open("database.db")?;
     
     let insert_user = InsertUser {
         name: "Ali".to_string(),
@@ -130,13 +130,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     let insert_result = insert(&conn, insert_user)?;
-    println!("Eklenen kayıt ID: {}", insert_result);
+    println!("Inserted record ID: {}", insert_result);
     
     Ok(())
 }
 ```
 
-### Veri Güncelleme (Update) İşlemi
+### Updating Data (Update)
 
 ```rust
 use parsql::{
@@ -158,23 +158,23 @@ pub struct UpdateUser {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open("veritabani.db")?;
+    let conn = Connection::open("database.db")?;
     
     let update_user = UpdateUser {
         id: 1,
-        name: String::from("Ali Güncellendi"),
+        name: String::from("Ali Updated"),
         email: String::from("ali.updated@gmail.com"),
         state: 2,
     };
     
     let result = update(&conn, update_user)?;
-    println!("Güncellenen kayıt sayısı: {}", result);
+    println!("Number of records updated: {}", result);
     
     Ok(())
 }
 ```
 
-### Veri Silme (Delete) İşlemi
+### Deleting Data (Delete)
 
 ```rust
 use parsql::{
@@ -192,19 +192,19 @@ pub struct DeleteUser {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let conn = Connection::open("veritabani.db")?;
+    let conn = Connection::open("database.db")?;
     
     let delete_user = DeleteUser { id: 1 };
     let result = delete(&conn, delete_user)?;
     
-    println!("Silinen kayıt sayısı: {}", result);
+    println!("Number of records deleted: {}", result);
     Ok(())
 }
 ```
 
-## Gelişmiş Özellikler
+## Advanced Features
 
-### Join Kullanımı
+### Using Joins
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -219,7 +219,7 @@ pub struct UserWithPosts {
 }
 ```
 
-### Gruplama ve Sıralama
+### Grouping and Ordering
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -234,12 +234,12 @@ pub struct UserStats {
 }
 ```
 
-### Özel Select İfadeleri
+### Custom Select Statements
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table("users")]
-#[select("id, name, email, CASE WHEN state = 1 THEN 'Aktif' ELSE 'Pasif' END as status")]
+#[select("id, name, email, CASE WHEN state = 1 THEN 'Active' ELSE 'Inactive' END as status")]
 #[where_clause("id = $")]
 pub struct UserWithStatus {
     pub id: i64,
@@ -249,46 +249,45 @@ pub struct UserWithStatus {
 }
 ```
 
-## SQL Sorgularını İzleme
+## SQL Query Tracing
 
-Oluşturulan SQL sorgularını görmek için `PARSQL_TRACE` çevre değişkenini ayarlayabilirsiniz:
+To see the SQL queries being generated, you can set the `PARSQL_TRACE` environment variable:
 
 ```sh
 PARSQL_TRACE=1 cargo run
 ```
 
-Bu, SQLite için oluşturulan tüm sorguları konsola yazdıracaktır.
+This will print all queries generated for SQLite to the console.
 
-## Performans İpuçları
+## Performance Tips
 
-1. **İndeksleme**: SQLite sorgularınızın performansını artırmak için, sıkça sorguladığınız sütunlarda indeks oluşturun.
+1. **Indexing**: To improve the performance of your SQLite queries, create indexes on columns you frequently query.
 
    ```sql
    CREATE INDEX idx_users_email ON users(email);
    ```
 
-2. **Toplu İşlemler**: Birden çok insert, update veya delete işlemi yaparken, işlemleri bir transaction içinde yapın:
+2. **Batch Operations**: When performing multiple insert, update, or delete operations, do them within a transaction:
 
    ```rust
    conn.execute("BEGIN TRANSACTION", [])?;
-   // İşlemlerinizi burada yapın
+   // Perform your operations here
    conn.execute("COMMIT", [])?;
    ```
 
-3. **Prepared Statements**: Parsql zaten arkada prepared statement kullanır, bu SQL enjeksiyon saldırılarına karşı korunmanıza yardımcı olur.
+3. **Prepared Statements**: Parsql already uses prepared statements under the hood, which helps protect against SQL injection attacks.
 
-## Hata Yakalama
+## Error Handling
 
-SQLite işlemleri sırasında oluşabilecek hataları yakalamak ve işlemek için Rust'ın `Result` mekanizmasını kullanın:
+Use Rust's `Result` mechanism to catch and handle errors that may occur during SQLite operations:
 
 ```rust
 match get(&conn, get_user) {
-    Ok(user) => println!("Kullanıcı bulundu: {:?}", user),
-    Err(e) => eprintln!("Hata oluştu: {}", e),
+    Ok(user) => println!("User found: {:?}", user),
+    Err(e) => eprintln!("Error occurred: {}", e),
 }
 ```
 
-## Tam Örnek Proje
+## Complete Example Project
 
-Tam bir örnek proje için parsql ana deposundaki [examples/sqlite](../examples/sqlite) dizinine bakabilirsiniz.
-
+For a complete example project, see the [examples/sqlite](../examples/sqlite) directory in the main parsql repository. 

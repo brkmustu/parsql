@@ -1,30 +1,30 @@
 # parsql-tokio-postgres
 
-Parsql için Tokio PostgreSQL entegrasyon küfesidir. Bu paket, parsql'in tokio-postgres ve deadpool-postgres kütüphaneleriyle asenkron çalışmasını sağlayan API'leri içerir.
+Tokio PostgreSQL integration crate for parsql. This package provides asynchronous APIs that enable parsql to work with tokio-postgres and deadpool-postgres libraries.
 
-## Özellikler
+## Features
 
-- Asenkron PostgreSQL işlemleri (tokio runtime ile)
-- Otomatik SQL sorgu oluşturma
-- Güvenli parametre yönetimi
-- Generic CRUD işlemleri (get, insert, update, delete)
-- Veritabanı satırlarını struct'lara dönüştürme
-- Deadpool bağlantı havuzu desteği
+- Asynchronous PostgreSQL operations (with tokio runtime)
+- Automatic SQL query generation
+- Secure parameter management
+- Generic CRUD operations (get, insert, update, delete)
+- Conversion of database rows to structs
+- Deadpool connection pool support
 
-## Kurulum
+## Installation
 
-Cargo.toml dosyanıza şu şekilde ekleyin:
+Add to your Cargo.toml file as follows:
 
 ```toml
 [dependencies]
-# Tokio PostgreSQL için
+# For Tokio PostgreSQL
 parsql = { version = "0.3.0", features = ["tokio-postgres"] }
 
-# veya deadpool bağlantı havuzu ile kullanmak için
+# or for using with deadpool connection pool
 parsql = { version = "0.3.0", features = ["deadpool-postgres"] }
 ```
 
-veya doğrudan bu paketi kullanmak isterseniz:
+or if you want to use this package directly:
 
 ```toml
 [dependencies]
@@ -33,37 +33,37 @@ parsql-macros = "0.3.0"
 tokio-postgres = "0.7"
 tokio = { version = "1", features = ["full"] }
 
-# Deadpool kullanmak isterseniz
+# If you want to use Deadpool
 deadpool-postgres = "0.10"
 ```
 
-## Temel Kullanım
+## Basic Usage
 
-Bu paket, PostgreSQL veritabanı ile çalışırken **asenkron işlemler** kullanır. Bu, async/await kullanımı gerektirdiği anlamına gelir.
+This package uses **asynchronous operations** when working with PostgreSQL databases. This means it requires async/await usage.
 
-### Bağlantı Kurma
+### Establishing a Connection
 
-#### Tokio PostgreSQL ile Bağlantı
+#### With Tokio PostgreSQL
 
 ```rust
 use tokio_postgres::{NoTls, Error};
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    // PostgreSQL bağlantısı oluşturma
+    // Create PostgreSQL connection
     let (client, connection) = tokio_postgres::connect(
         "host=localhost user=postgres password=postgres dbname=test",
         NoTls,
     ).await?;
     
-    // Bağlantıyı arka planda çalıştır
+    // Run the connection in the background
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("Bağlantı hatası: {}", e);
+            eprintln!("Connection error: {}", e);
         }
     });
     
-    // Örnek tablo oluşturma
+    // Create example table
     client.execute(
         "CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
@@ -80,7 +80,7 @@ async fn main() -> Result<(), Error> {
 }
 ```
 
-#### Deadpool PostgreSQL ile Bağlantı Havuzu
+#### With Deadpool PostgreSQL Connection Pool
 
 ```rust
 use deadpool_postgres::{Config, Client, Pool};
@@ -88,17 +88,17 @@ use tokio_postgres::NoTls;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Deadpool konfigürasyonu
+    // Deadpool configuration
     let mut cfg = Config::new();
     cfg.host = Some("localhost".to_string());
     cfg.user = Some("postgres".to_string());
     cfg.password = Some("postgres".to_string());
     cfg.dbname = Some("test".to_string());
     
-    // Bağlantı havuzu oluşturma
+    // Create connection pool
     let pool = cfg.create_pool(None, NoTls)?;
     
-    // Havuzdan bağlantı alma
+    // Get connection from pool
     let client: Client = pool.get().await?;
     
     // ...
@@ -107,9 +107,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-## CRUD İşlemleri
+## CRUD Operations
 
-### Veri Okuma (Get) İşlemi
+### Reading Data (Get)
 
 ```rust
 use parsql::{
@@ -149,20 +149,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("Bağlantı hatası: {}", e);
+            eprintln!("Connection error: {}", e);
         }
     });
     
-    // Kullanımı
+    // Usage
     let get_user = GetUser::new(1);
     let get_result = get(&client, get_user).await?;
     
-    println!("Kullanıcı: {:?}", get_result);
+    println!("User: {:?}", get_result);
     Ok(())
 }
 ```
 
-### Veri Ekleme (Insert) İşlemi
+### Adding Data (Insert)
 
 ```rust
 use parsql::{
@@ -189,7 +189,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("Bağlantı hatası: {}", e);
+            eprintln!("Connection error: {}", e);
         }
     });
     
@@ -200,13 +200,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
     
     let insert_result = insert(&client, insert_user).await?;
-    println!("Eklenen kayıt ID: {}", insert_result);
+    println!("Inserted record ID: {}", insert_result);
     
     Ok(())
 }
 ```
 
-### Veri Güncelleme (Update) İşlemi
+### Updating Data (Update)
 
 ```rust
 use parsql::{
@@ -236,25 +236,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("Bağlantı hatası: {}", e);
+            eprintln!("Connection error: {}", e);
         }
     });
     
     let update_user = UpdateUser {
         id: 1,
-        name: String::from("Ali Güncellendi"),
+        name: String::from("Ali Updated"),
         email: String::from("ali.updated@gmail.com"),
         state: 2,
     };
     
     let result = update(&client, update_user).await?;
-    println!("Güncellenen kayıt sayısı: {}", result);
+    println!("Number of records updated: {}", result);
     
     Ok(())
 }
 ```
 
-### Veri Silme (Delete) İşlemi
+### Deleting Data (Delete)
 
 ```rust
 use parsql::{
@@ -280,28 +280,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     tokio::spawn(async move {
         if let Err(e) = connection.await {
-            eprintln!("Bağlantı hatası: {}", e);
+            eprintln!("Connection error: {}", e);
         }
     });
     
     let delete_user = DeleteUser { id: 1 };
     let result = delete(&client, delete_user).await?;
     
-    println!("Silinen kayıt sayısı: {}", result);
+    println!("Number of records deleted: {}", result);
     Ok(())
 }
 ```
 
-## Deadpool ile Kullanım
+## Using Deadpool
 
-Deadpool bağlantı havuzu ile parsql kullanmak için öncelikle cargo.toml dosyanızda "deadpool-postgres" özelliğini etkinleştirmeniz gerekiyor. Sonrasında, havuzdan aldığınız istemci üzerinde parsql fonksiyonlarını kullanabilirsiniz.
+To use parsql with Deadpool connection pool, first you need to enable the "deadpool-postgres" feature in your cargo.toml file. Then, you can use parsql functions on clients obtained from the pool.
 
 ```rust
 use deadpool_postgres::{Config, Pool};
 use tokio_postgres::NoTls;
 use parsql::tokio_postgres::{get, insert};
 
-// Havuz bağlantısıyla get işlemi
+// Get operation with pool connection
 async fn fetch_user(pool: &Pool, user_id: i64) -> Result<GetUser, Box<dyn std::error::Error>> {
     let client = pool.get().await?;
     let get_user = GetUser::new(user_id);
@@ -309,7 +309,7 @@ async fn fetch_user(pool: &Pool, user_id: i64) -> Result<GetUser, Box<dyn std::e
     Ok(result)
 }
 
-// Havuz bağlantısıyla insert işlemi
+// Insert operation with pool connection
 async fn create_user(pool: &Pool, user: InsertUser) -> Result<i64, Box<dyn std::error::Error>> {
     let client = pool.get().await?;
     let result = insert(&client, user).await?;
@@ -317,9 +317,9 @@ async fn create_user(pool: &Pool, user: InsertUser) -> Result<i64, Box<dyn std::
 }
 ```
 
-## Gelişmiş Özellikler
+## Advanced Features
 
-### Join Kullanımı
+### Using Joins
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -334,7 +334,7 @@ pub struct UserWithPosts {
 }
 ```
 
-### Gruplama ve Sıralama
+### Grouping and Ordering
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -349,12 +349,12 @@ pub struct UserStats {
 }
 ```
 
-### Özel Select İfadeleri
+### Custom Select Statements
 
 ```rust
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table("users")]
-#[select("id, name, email, CASE WHEN state = 1 THEN 'Aktif' ELSE 'Pasif' END as status")]
+#[select("id, name, email, CASE WHEN state = 1 THEN 'Active' ELSE 'Inactive' END as status")]
 #[where_clause("id = $")]
 pub struct UserWithStatus {
     pub id: i64,
@@ -364,35 +364,35 @@ pub struct UserWithStatus {
 }
 ```
 
-## SQL Sorgularını İzleme
+## SQL Query Tracing
 
-Oluşturulan SQL sorgularını görmek için `PARSQL_TRACE` çevre değişkenini ayarlayabilirsiniz:
+To see the SQL queries being generated, you can set the `PARSQL_TRACE` environment variable:
 
 ```sh
 PARSQL_TRACE=1 cargo run
 ```
 
-Bu, tokio-postgres için oluşturulan tüm sorguları konsola yazdıracaktır.
+This will print all queries generated for tokio-postgres to the console.
 
-## Performans İpuçları
+## Performance Tips
 
-1. **Prepared Statements**: tokio-postgres, sorguları prepared statement olarak çalıştırır ve parsql bu özelliği kullanır, bu SQL enjeksiyon saldırılarına karşı korunmanıza yardımcı olur.
+1. **Prepared Statements**: tokio-postgres runs queries as prepared statements, and parsql uses this feature, which helps protect against SQL injection attacks.
 
-2. **Bağlantı Havuzu**: Yüksek yüklü uygulamalarda deadpool-postgres kullanımı daha iyi performans sağlar.
+2. **Connection Pool**: Using deadpool-postgres provides better performance for high-load applications.
 
-3. **Asenkron İşlemler**: tokio-postgres ile işlemlerinizi asenkron olarak çalıştırarak, uygulamanızın daha verimli çalışmasını sağlayabilirsiniz.
+3. **Asynchronous Operations**: By running your operations asynchronously with tokio-postgres, you can make your application more efficient.
 
-## Hata Yakalama
+## Error Handling
 
-Tokio-postgres işlemleri sırasında oluşabilecek hataları yakalamak ve işlemek için Rust'ın `Result` mekanizmasını kullanın:
+Use Rust's `Result` mechanism to catch and handle errors that may occur during tokio-postgres operations:
 
 ```rust
 match get(&client, get_user).await {
-    Ok(user) => println!("Kullanıcı bulundu: {:?}", user),
-    Err(e) => eprintln!("Hata oluştu: {}", e),
+    Ok(user) => println!("User found: {:?}", user),
+    Err(e) => eprintln!("Error occurred: {}", e),
 }
 ```
 
-## Tam Örnek Proje
+## Complete Example Project
 
-Tam bir örnek proje için parsql ana deposundaki [examples/tokio-postgres](../examples/tokio-postgres) dizinine bakabilirsiniz.
+For a complete example project, see the [examples/tokio-postgres](../examples/tokio-postgres) directory in the main parsql repository. 
