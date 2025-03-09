@@ -1,51 +1,61 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use regex::Regex;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, Attribute, LitStr};
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
+/// Extracts field names from a WHERE clause.
+/// 
+/// # Arguments
+/// * `input` - The WHERE clause string
+/// 
+/// # Returns
+/// * `Vec<String>` - A vector of field names found in the WHERE clause
 fn extract_fields_from_where_clause(input: &str) -> Vec<String> {
     let mut fields = Vec::new();
-
-    // Regex deseni: "id = $" veya "name = $" gibi eşleşmeleri yakalar
     let re = Regex::new(r"\b(\w+)\s*=\s*\$").unwrap();
-
-    // Eşleşen alanları bul ve topla
     for cap in re.captures_iter(input) {
         if let Some(field) = cap.get(1) {
             fields.push(field.as_str().to_string());
         }
     }
-
     fields
 }
 
-// Yeni bir güvenlik modülü ekleyelim
+/// Query builder module for safe SQL query construction
 mod query_builder {
+    /// A safe query builder that prevents SQL injection
+    #[derive(Default)]
     pub(crate) struct SafeQueryBuilder {
+        /// The SQL query being built
         pub query: String,
     }
 
     impl SafeQueryBuilder {
+        /// Creates a new empty query builder
         pub fn new() -> Self {
-            Self {
-                query: String::new(),
-            }
+            Self::default()
         }
 
+        /// Builds and returns the final SQL query string
         pub fn build(self) -> String {
             self.query.trim().to_string()
         }
 
+        /// Adds a SQL keyword to the query with proper spacing
         pub fn add_keyword(&mut self, keyword: &str) {
             if !self.query.is_empty() {
-                self.query.push_str(" ");
+                self.query.push(' ');
             }
             self.query.push_str(keyword);
         }
 
+        /// Adds a safe identifier (table name, column name) to the query
+        /// 
+        /// # Arguments
+        /// * `ident` - The identifier to add
         pub fn add_identifier(&mut self, ident: &str) {
             if !self.query.is_empty() {
-                self.query.push_str(" ");
+                self.query.push(' ');
             }
             let safe_ident = ident
                 .chars()
@@ -54,6 +64,10 @@ mod query_builder {
             self.query.push_str(&safe_ident);
         }
 
+        /// Adds a comma-separated list of safe identifiers to the query
+        /// 
+        /// # Arguments
+        /// * `items` - The list of identifiers to add
         pub fn add_comma_list(&mut self, items: &[&str]) {
             let safe_items: Vec<String> = items
                 .iter()
@@ -66,20 +80,26 @@ mod query_builder {
             self.query.push_str(&safe_items.join(", "));
         }
 
+        /// Adds raw text to the query with proper spacing
+        /// This should only be used for trusted input or pre-validated strings
+        /// 
+        /// # Arguments
+        /// * `text` - The raw text to add
         pub fn add_raw(&mut self, text: &str) {
             if !self.query.is_empty() && !text.starts_with(',') {
-                self.query.push_str(" ");
+                self.query.push(' ');
             }
             self.query.push_str(text);
         }
     }
 }
 
+/// Implements the Updateable derive macro.
 pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // Extracting `table` attribute
+    // Extract table attribute
     let table = input
         .attrs
         .iter()
@@ -89,7 +109,7 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for `table`")
         .value();
 
-    // Extracting `columns` attribute
+    // Extract columns attribute
     let columns_attr = input
         .attrs
         .iter()
@@ -104,17 +124,18 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
         .map(|s| s.trim().to_string())
         .collect();
 
-    // Extracting `where_clause` attribute
+    // Get the optional where_clause attribute
     let where_clause = input
         .attrs
         .iter()
         .find(|attr| attr.path().is_ident("where_clause"))
-        .expect("Missing `#[where_clause = \"...\"]` attribute")
-        .parse_args::<syn::LitStr>()
-        .expect("Expected a string literal for `where_clause`")
-        .value();
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for where_clause")
+                .value()
+        });
 
-    // Collecting fields from the struct
+    // Collect fields from the struct
     let fields = if let syn::Data::Struct(data) = &input.data {
         if let syn::Fields::Named(fields) = &data.fields {
             fields
@@ -123,13 +144,13 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
                 .map(|f| f.ident.as_ref().unwrap().to_string())
                 .collect::<Vec<_>>()
         } else {
-            panic!("`Updateable` can only be derived for structs with named fields");
+            panic!("Updateable can only be derived for structs with named fields");
         }
     } else {
-        panic!("`Updateable` can only be derived for structs");
+        panic!("Updateable can only be derived for structs");
     };
 
-    // Sorting fields for `updated_columns`
+    // Sort fields for `updated_columns`
     let sorted_fields: Vec<_> = column_order
         .iter()
         .filter_map(|col| fields.iter().find(|field| *field == col))
@@ -139,20 +160,23 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     // Adjust the where_clause based on the number of updated columns
     let mut count = sorted_fields.len() + 1;
     let adjusted_where_clause = where_clause
-        .chars()
-        .enumerate()
-        .map(|(_, c)| {
-            if c == '$' {
-                // $ karakterinin yanına numara ekleyelim
-                let new_char = format!("${}", count);
-                count += 1;
-                new_char
-            } else {
-                // Diğer karakterleri olduğu gibi bırakıyoruz
-                c.to_string()
-            }
+        .map(|clause| {
+            clause.chars()
+                .enumerate()
+                .map(|(_, c)| {
+                    if c == '$' {
+                        // Add a number after the $ character
+                        let new_char = format!("${}", count);
+                        count += 1;
+                        new_char
+                    } else {
+                        // Keep other characters as is
+                        c.to_string()
+                    }
+                })
+                .collect::<String>()
         })
-        .collect::<String>();
+        .unwrap_or_else(|| "".to_string());
 
     let mut builder = query_builder::SafeQueryBuilder::new();
     
@@ -160,7 +184,7 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     builder.add_identifier(&table);
     builder.add_keyword("SET");
 
-    // SET ifadelerini güvenli şekilde oluştur
+    // Build SET statements safely
     let update_statements: Vec<String> = column_order
         .iter()
         .enumerate()
@@ -192,11 +216,12 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Implements the Insertable derive macro.
 pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // Table name and column extraction
+    // Extract table name and columns
     let table = input
         .attrs
         .iter()
@@ -222,7 +247,7 @@ pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
 
     let column_names = fields.iter().map(|f| f.as_str()).collect::<Vec<_>>();
 
-    // placeholders'ı Vec<String> olarak oluşturalım, String olarak değil
+    // Create placeholders as Vec<String>
     let placeholders: Vec<String> = (1..=column_names.len())
         .map(|i| format!("${}", i))
         .collect();
@@ -269,15 +294,16 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for table name")
         .value();
 
-    // Table name and column extraction
+    // Get the optional where_clause attribute
     let where_clause = input
         .attrs
         .iter()
         .find(|attr| attr.path().is_ident("where_clause"))
-        .expect("Missing `#[where_clause = \"...\"]` attribute")
-        .parse_args::<syn::LitStr>()
-        .expect("Expected a string literal for table name")
-        .value();
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for where_clause")
+                .value()
+        });
 
     let fields = if let Data::Struct(data) = &input.data {
         if let Fields::Named(fields) = &data.fields {
@@ -309,22 +335,25 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     let mut count = 1;
 
     let adjusted_where_clause = where_clause
-        .chars()
-        .enumerate()
-        .map(|(_, c)| {
-            if c == '$' {
-                // $ karakterinin yanına numara ekleyelim
-                let new_char = format!("${}", count);
-                count += 1;
-                new_char
-            } else {
-                // Diğer karakterleri olduğu gibi bırakıyoruz
-                c.to_string()
-            }
+        .map(|clause| {
+            clause.chars()
+                .enumerate()
+                .map(|(_, c)| {
+                    if c == '$' {
+                        // Add a number after the $ character
+                        let new_char = format!("${}", count);
+                        count += 1;
+                        new_char
+                    } else {
+                        // Keep other characters as is
+                        c.to_string()
+                    }
+                })
+                .collect::<String>()
         })
-        .collect::<String>();
+        .unwrap_or_else(|| "".to_string());
 
-    // Opsiyonel select özniteliğini al
+    // Get the optional select attribute
     let select = input
         .attrs
         .iter()
@@ -335,7 +364,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
                 .value()
         });
 
-    // Eğer select tanımlanmamışsa, tüm alanları kullan
+    // If select is not defined, use all fields
     let select = select.unwrap_or_else(|| {
         fields
             .iter()
@@ -344,7 +373,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
             .join(", ")
     });
 
-    // Group by özniteliğini opsiyonel olarak al
+    // Get the optional group_by attribute
     let group_by = input
         .attrs
         .iter()
@@ -355,7 +384,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
                 .value()
         });
 
-    // Having özniteliğini opsiyonel olarak al
+    // Get the optional having attribute
     let having = input
         .attrs
         .iter()
@@ -366,7 +395,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
                 .value()
         });
 
-    // Order by özniteliğini opsiyonel olarak al
+    // Get the optional order_by attribute
     let order_by = input
         .attrs
         .iter()
@@ -384,7 +413,7 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     builder.add_keyword("FROM");
     builder.add_identifier(&tables);
     
-    // Join ifadelerini ayrı ayrı ekleyelim ve her birinin etrafına boşluk koyalım
+    // Add join expressions separately and place a space around each one
     for join in joins {
         builder.add_raw(&format!(" {} ", join.trim()));
     }
@@ -394,19 +423,19 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
         builder.add_raw(&adjusted_where_clause);
     }
 
-    // GROUP BY ifadesini ekle
+    // Add GROUP BY clause
     if let Some(group_by_clause) = group_by {
         builder.add_keyword("GROUP BY");
         builder.add_raw(&group_by_clause);
     }
 
-    // HAVING ifadesini ekle
+    // Add HAVING clause
     if let Some(having_clause) = having {
         builder.add_keyword("HAVING");
         builder.add_raw(&having_clause);
     }
 
-    // ORDER BY ifadesini ekle
+    // Add ORDER BY clause
     if let Some(order_by_clause) = order_by {
         builder.add_keyword("ORDER BY");
         builder.add_raw(&order_by_clause);
@@ -438,36 +467,41 @@ pub(crate) fn derive_deletable_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for table name")
         .value();
 
+    // Get the optional where_clause attribute
     let where_clause = input
         .attrs
         .iter()
         .find(|attr| attr.path().is_ident("where_clause"))
-        .expect("Missing `#[where_clause = \"...\"]` attribute")
-        .parse_args::<syn::LitStr>()
-        .expect("Expected a string literal for table name")
-        .value();
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for where_clause")
+                .value()
+        });
 
     let mut count = 1;
     let adjusted_where_clause = where_clause
-        .chars()
-        .enumerate()
-        .map(|(_, c)| {
-            if c == '$' {
-                let new_char = format!("${}", count);
-                count += 1;
-                new_char
-            } else {
-                c.to_string()
-            }
+        .map(|clause| {
+            clause.chars()
+                .enumerate()
+                .map(|(_, c)| {
+                    if c == '$' {
+                        let new_char = format!("${}", count);
+                        count += 1;
+                        new_char
+                    } else {
+                        c.to_string()
+                    }
+                })
+                .collect::<String>()
         })
-        .collect::<String>();
+        .unwrap_or_else(|| "".to_string());
 
     let mut builder = query_builder::SafeQueryBuilder::new();
     
     builder.add_keyword("DELETE FROM");
     builder.add_identifier(&table);
     builder.add_keyword("WHERE");
-    builder.add_raw(&adjusted_where_clause);  // SafeQueryBuilder otomatik olarak boşluk ekleyecek
+    builder.add_raw(&adjusted_where_clause);  // SafeQueryBuilder will automatically add spaces
 
     let safe_query = builder.build();
 
@@ -486,7 +520,7 @@ pub(crate) fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // where_clause özniteliğini opsiyonel olarak al
+    // Get the optional where_clause attribute
     let where_clause = input
         .attrs
         .iter()
@@ -539,7 +573,7 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
 
-    // update özniteliğini al
+    // Get the update attribute
     let update = input
         .attrs
         .iter()
@@ -549,7 +583,7 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
         .expect("Expected a string literal for update")
         .value();
 
-    // where_clause özniteliğini al
+    // Get the where_clause attribute
     let where_clause = input
         .attrs
         .iter()
@@ -573,16 +607,16 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
         panic!("UpdateParams can only be derived for structs");
     };
 
-    // Güncelleme için kullanılacak alanları al
+    // Get fields to be used for update
     let update_fields: Vec<String> = update
         .split(',')
         .map(|s| s.trim().to_string())
         .collect();
 
-    // Where clause için kullanılacak alanları al
+    // Get fields to be used in the where clause
     let condition_fields = extract_fields_from_where_clause(&where_clause);
 
-    // Alan isimlerini oluştur
+    // Create field names
     let update_field_names: Vec<_> = update_fields
         .iter()
         .filter_map(|col| fields.iter().find(|field| *field == col))
@@ -609,68 +643,14 @@ pub(crate) fn derive_update_params_impl(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-// Birleştirilmiş derive_from_row fonksiyonu
-pub fn derive_from_row(input: TokenStream) -> TokenStream {
-    let ast: syn::DeriveInput = syn::parse(input.clone()).unwrap();
-    let name = &ast.ident;
-    let fields = match &ast.data {
-        Data::Struct(data) => {
-            match &data.fields {
-                Fields::Named(fields) => &fields.named,
-                _ => panic!("FromRow only supports structs with named fields"),
-            }
-        },
-        _ => panic!("FromRow only supports structs"),
-    };
-
-    // Feature flag'lere göre farklı kod üretimi
-    #[cfg(feature = "sqlite")]
-    {
-        // SQLite için kod üretimi
-        let field_names = fields.iter().map(|f| f.ident.as_ref().unwrap());
-        let field_strings = fields
-            .iter()
-            .map(|f| f.ident.as_ref().unwrap().to_string());
-
-        let expanded = quote! {
-            impl FromRow for #name {
-                fn from_row(row: &Row) -> Result<Self, Error> {
-                    Ok(Self {
-                        #(#field_names: row.get(#field_strings)?),*
-                    })
-                }
-            }
-        };
-
-        TokenStream::from(expanded)
-    }
-    #[cfg(not(feature = "sqlite"))]
-    {
-        let name = &input.ident;
-        
-        // PostgreSQL, Tokio PostgreSQL veya diğer veritabanları için kod üretimi
-        // Alan adlarını ve tiplerini çıkarır.
-        let field_initializers = fields.iter().map(|field| {
-            let name = &field.ident;
-            quote! {
-                #name: row.get(stringify!(#name))
-            }
-        });
-
-        let gen = quote! {
-            impl FromRow for #name {
-                fn from_row(row: &Row) -> Result<Self, Error> {
-                    Ok(Self {
-                        #(#field_initializers),*
-                    })
-                }
-            }
-        };
-        
-        gen.into()
-    }
-}
-
+/// Implements the FromRow trait for SQLite database
+/// 
+/// # Arguments
+/// * `input` - TokenStream containing the struct definition
+/// 
+/// # Returns
+/// * `TokenStream` - Generated implementation code
+#[cfg(feature = "sqlite")]
 pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -678,13 +658,12 @@ pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
     let fields = match &input.data {
         Data::Struct(data) => match &data.fields {
             Fields::Named(fields) => fields,
-            _ => panic!("Sadece named fields destekleniyor"),
+            _ => panic!("Only named fields are supported"),
         },
-        _ => panic!("Sadece struct'lar destekleniyor"),
+        _ => panic!("Only structs are supported"),
     };
 
     let field_names = fields.named.iter().map(|f| f.ident.as_ref().unwrap());
-
     let field_strings = fields
         .named
         .iter()
@@ -703,15 +682,21 @@ pub(crate) fn derive_from_row_sqlite(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
-pub fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
+/// Implements the FromRow trait for PostgreSQL database
+/// 
+/// # Arguments
+/// * `input` - TokenStream containing the struct definition
+/// 
+/// # Returns
+/// * `TokenStream` - Generated implementation code
+pub(crate) fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
+    
     let fields = match &ast.data {
-        Data::Struct(data) => {
-            match &data.fields {
-                Fields::Named(fields) => &fields.named,
-                _ => panic!("FromRow only supports structs with named fields"),
-            }
+        Data::Struct(data) => match &data.fields {
+            Fields::Named(fields) => &fields.named,
+            _ => panic!("FromRow only supports structs with named fields"),
         },
         _ => panic!("FromRow only supports structs"),
     };
@@ -723,9 +708,7 @@ pub fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
         impl FromRow for #name {
             fn from_row(row: &Row) -> Result<Self, Error> {
                 Ok(Self {
-                    #(
-                        #field_names: row.try_get(#field_names_str)?,
-                    )*
+                    #(#field_names: row.try_get(#field_names_str)?),*
                 })
             }
         }
@@ -733,47 +716,3 @@ pub fn derive_from_row_postgres(input: TokenStream) -> TokenStream {
     gen.into()
 }
 
-fn process_join_clause(join_attr: &str) -> String {
-    format!(" {} ", join_attr.trim())
-}
-
-pub(crate) fn impl_deleteable(ast: &DeriveInput) -> TokenStream {
-    let struct_name = &ast.ident;
-    let table_name = get_table_name(&ast.attrs);
-    let where_clause = get_where_clause(&ast.attrs);
-    
-    let sql = format!("DELETE FROM {}{}", table_name, where_clause);
-    
-    let expanded = quote! {
-        impl SqlQuery for #struct_name {
-            fn query() -> String {
-                #sql.to_string()
-            }
-        }
-    };
-
-    TokenStream::from(expanded)
-}
-
-fn get_table_name(attrs: &[Attribute]) -> String {
-    for attr in attrs {
-        if attr.path().is_ident("table") {
-            if let Ok(lit) = attr.parse_args::<LitStr>() {
-                return lit.value();
-            }
-        }
-    }
-    panic!("Missing `#[table = \"...\"]` attribute")
-}
-
-fn get_where_clause(attrs: &[Attribute]) -> String {
-    for attr in attrs {
-        if attr.path().is_ident("where_clause") {
-            if let Ok(lit) = attr.parse_args::<LitStr>() {
-                // WHERE kelimesi ve koşul arasına boşluk ekliyoruz
-                return format!(" WHERE {} ", lit.value());
-            }
-        }
-    }
-    panic!("Missing `#[where_clause = \"...\"]` attribute")
-}

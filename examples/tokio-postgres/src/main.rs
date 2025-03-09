@@ -113,9 +113,8 @@ async fn main() {
     // ------------------------------------------------------------
     // DELETE example: Delete a user
     // ------------------------------------------------------------
-    // DeleteUser struct is marked with #[derive(Deleteable, Debug, SqlParams)],
-    // #[table("users")] to specify the table,
-    // #[where_clause("id = $")] to define the delete condition
+    // DeleteUser struct is marked with #[derive(Debug)],
+    // and implements SqlQuery and SqlParams traits manually
     let delete_user = DeleteUser { id: 6 };
     
     // Use delete function to delete the user from the database
