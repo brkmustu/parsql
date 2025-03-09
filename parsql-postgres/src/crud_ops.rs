@@ -1,8 +1,6 @@
 use postgres::{types::ToSql, Client, Error, Row};
 use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 
-
-
 /// # insert
 /// 
 /// Inserts a new record into the database.
@@ -17,7 +15,7 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Insertable, SqlParams)]  // Required macros
 /// #[table("table_name")]            // Table name to insert into
 /// pub struct MyEntity {
@@ -32,8 +30,10 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 /// - `#[table("table_name")]`: Specifies the table name for the insertion
 /// 
 /// ## Example Usage
-/// ```rust
-/// // Define an entity for insertion
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::insert;
+/// 
 /// #[derive(Insertable, SqlParams)]
 /// #[table("users")]
 /// pub struct InsertUser {
@@ -42,16 +42,22 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 ///     pub state: i16,
 /// }
 ///
-/// // Create a new user
-/// let insert_user = InsertUser {
-///     name: "John".to_string(),
-///     email: "john@example.com".to_string(),
-///     state: 1_i16,
-/// };
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
 ///
-/// // Insert into database
-/// let insert_result = insert(&mut db, insert_user);
-/// println!("Insert result: {:?}", insert_result);
+///     let insert_user = InsertUser {
+///         name: "John".to_string(),
+///         email: "john@example.com".to_string(),
+///         state: 1_i16,
+///     };
+///
+///     let insert_result = insert(&mut client, insert_user)?;
+///     println!("Insert result: {:?}", insert_result);
+///     Ok(())
+/// }
 /// ```
 pub fn insert<T: SqlQuery + SqlParams>(client: &mut Client, entity: T) -> Result<u64, Error> {
     let sql = T::query();
@@ -77,7 +83,7 @@ pub fn insert<T: SqlQuery + SqlParams>(client: &mut Client, entity: T) -> Result
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Updateable, UpdateParams)]  // Required macros
 /// #[table("table_name")]               // Table name to update
 /// #[update("field1, field2")]          // Fields to update (optional)
@@ -97,8 +103,10 @@ pub fn insert<T: SqlQuery + SqlParams>(client: &mut Client, entity: T) -> Result
 /// - `#[where_clause("id = $")]`: Specifies the update condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
-/// // Define an entity for updating
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::update;
+/// 
 /// #[derive(Updateable, UpdateParams)]
 /// #[table("users")]
 /// #[update("name, email")]
@@ -110,17 +118,23 @@ pub fn insert<T: SqlQuery + SqlParams>(client: &mut Client, entity: T) -> Result
 ///     pub state: i16,  // This field won't be updated as it's not specified in the update attribute
 /// }
 ///
-/// // Create update data
-/// let update_user = UpdateUser {
-///     id: 1,
-///     name: String::from("John"),
-///     email: String::from("john@example.com"),
-///     state: 2,
-/// };
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
 ///
-/// // Update in database
-/// let update_result = update(&mut db, update_user);
-/// println!("Update result: {:?}", update_result);
+///     let update_user = UpdateUser {
+///         id: 1,
+///         name: String::from("John"),
+///         email: String::from("john@example.com"),
+///         state: 2,
+///     };
+///
+///     let update_result = update(&mut client, update_user)?;
+///     println!("Update result: {:?}", update_result);
+///     Ok(())
+/// }
 /// ```
 pub fn update<T: SqlQuery + UpdateParams>(
     client: &mut postgres::Client,
@@ -152,8 +166,8 @@ pub fn update<T: SqlQuery + UpdateParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
-/// #[derive(Deleteable, SqlParams)]   // Required macros
+/// ```rust,no_run
+/// #[derive(Deletable, SqlParams)]   // Required macros
 /// #[table("table_name")]             // Table name to delete from
 /// #[where_clause("id = $")]          // Delete condition
 /// pub struct MyEntity {
@@ -162,27 +176,35 @@ pub fn update<T: SqlQuery + UpdateParams>(
 /// }
 /// ```
 /// 
-/// - `Deleteable`: Automatically generates SQL DELETE statements
+/// - `Deletable`: Automatically generates SQL DELETE statements
 /// - `SqlParams`: Automatically generates SQL parameters
 /// - `#[table("table_name")]`: Specifies the table name for the deletion
 /// - `#[where_clause("id = $")]`: Specifies the delete condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
-/// // Define an entity for deletion
-/// #[derive(Deleteable, SqlParams)]
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::delete;
+/// 
+/// #[derive(Deletable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
 /// pub struct DeleteUser {
 ///     pub id: i32,
 /// }
 /// 
-/// // Create delete data
-/// let delete_user = DeleteUser { id: 6 };
-/// 
-/// // Delete from database
-/// let delete_result = delete(&mut db, delete_user);
-/// println!("Delete result: {:?}", delete_result);
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
+///
+///     let delete_user = DeleteUser { id: 6 };
+///     let delete_result = delete(&mut client, delete_user)?;
+///     
+///     println!("Delete result: {:?}", delete_result);
+///     Ok(())
+/// }
 /// ```
 pub fn delete<T: SqlQuery + SqlParams>(
     client: &mut postgres::Client,
@@ -214,7 +236,7 @@ pub fn delete<T: SqlQuery + SqlParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]  // Required macros
 /// #[table("table_name")]                           // Table name to query
 /// #[where_clause("id = $")]                        // Query condition
@@ -245,8 +267,10 @@ pub fn delete<T: SqlQuery + SqlParams>(
 /// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
-/// // Define a query entity
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::get;
+/// 
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
@@ -268,25 +292,31 @@ pub fn delete<T: SqlQuery + SqlParams>(
 ///     }
 /// }
 ///
-/// // Create query parameters
-/// let get_user = GetUser::new(1);
-/// 
-/// // Retrieve from database
-/// let get_result = get(&mut db, &get_user);
-/// println!("Get result: {:?}", get_result);
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
+///
+///     let get_user = GetUser::new(1);
+///     let get_result = get(&mut client, &get_user)?;
+///     
+///     println!("Get result: {:?}", get_result);
+///     Ok(())
+/// }
 /// ```
 pub fn get<T: SqlQuery + FromRow + SqlParams>(
     client: &mut Client,
     params: &T,
 ) -> Result<T, Error> {
-    let query = T::query();
+    let sql = T::query();
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-        println!("[PARSQL-POSTGRES] Execute SQL: {}", query);
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
     
     let params = params.params();
-    match client.query_one(&query, &params) {
-        Ok(row) => T::from_row(&row),
+    match client.query_one(&sql, &params) {
+        Ok(_row) => T::from_row(&_row),
         Err(e) => Err(e),
     }
 }
@@ -305,7 +335,7 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]  // Required macros
 /// #[table("table_name")]                           // Table name to query
 /// #[select("field1, field2, COUNT(*) as count")]   // Custom SELECT statement (optional)
@@ -347,9 +377,23 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
 /// - `#[order_by("...")]`: Specifies the ORDER BY statement
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::get_all;
+/// 
+/// // Simple query example
+/// #[derive(Queryable, SqlParams, FromRow, Debug)]
+/// #[table("users")]
+/// #[where_clause("email = $")]
+/// pub struct GetAllUsers {
+///     pub id: i32,
+///     pub name: String,
+///     pub email: String,
+///     pub state: i16,
+/// }
+///
 /// // Complex JOIN example
-/// #[derive(Queryable, FromRow, SqlParams, Debug)]
+/// #[derive(Queryable, SqlParams, FromRow, Debug)]
 /// #[table("users")]
 /// #[select("users.id, users.name, users.email, users.state as user_state, posts.id as post_id, posts.content, posts.state as post_state, comments.content as comment")]
 /// #[join("INNER JOIN posts ON users.id = posts.user_id")]
@@ -366,85 +410,118 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
 ///     pub comment: Option<String>,
 /// }
 ///
-/// // GROUP BY and HAVING example
+/// // GROUP BY and ORDER BY example
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]
 /// #[table("users")]
 /// #[select("users.state, COUNT(*) as user_count")]
 /// #[where_clause("state > $")]
 /// #[group_by("users.state")]
-/// #[having("COUNT(*) > 0")]
 /// #[order_by("user_count DESC")]
 /// pub struct UserStateStats {
 ///     pub state: i16,
 ///     pub user_count: i64,
 /// }
 ///
-/// // Example usage
-/// let select_user_with_posts = SelectUserWithPosts::new(1);
-/// let get_user_with_posts = get_all(&mut db, &select_user_with_posts);
-/// println!("Get user with posts: {:?}", get_user_with_posts);
-/// 
-/// // Statistics example
-/// let user_state_stats = UserStateStats::new(0);
-/// let stats_result = get_all(&mut db, &user_state_stats);
-/// println!("User state stats: {:?}", stats_result);
+/// // HAVING filter example
+/// #[derive(Queryable, SqlParams, FromRow, Debug)]
+/// #[table("users")]
+/// #[select("users.state, COUNT(*) as user_count")]
+/// #[where_clause("state > $")]
+/// #[group_by("users.state")]
+/// #[having("COUNT(*) > 1")]
+/// #[order_by("user_count DESC")]
+/// pub struct UserStateStatsFiltered {
+///     pub state: i16,
+///     pub user_count: i64,
+/// }
+///
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
+///
+///     // Example usage
+///     let select_user_with_posts = SelectUserWithPosts::new(1);
+///     let get_user_with_posts = get_all(&mut client, &select_user_with_posts)?;
+///     
+///     println!("Get user with posts: {:?}", get_user_with_posts);
+///     
+///     // Other examples
+///     let user_state_stats = get_all(&mut client, &UserStateStats::new(0))?;
+///     println!("User state stats: {:?}", user_state_stats);
+///     
+///     let user_state_stats_filtered = get_all(&mut client, &UserStateStatsFiltered::new(0))?;
+///     println!("User state stats (filtered with HAVING): {:?}", user_state_stats_filtered);
+///     Ok(())
+/// }
 /// ```
 pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
     client: &mut Client,
     params: &T,
 ) -> Result<Vec<T>, Error> {
-    let query = T::query();
+    let sql = T::query();
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-        println!("[PARSQL-POSTGRES] Execute SQL: {}", query);
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
     let params = params.params();
-    let rows = client.query(&query, &params)?;
+    let rows = client.query(&sql, &params)?;
     
     rows.iter()
         .map(|row| T::from_row(row))
-        .collect()
+        .collect::<Result<Vec<_>, _>>()
 }
 
 /// # get_by_query
 /// 
-/// Retrieves multiple records from the database using a raw SQL query.
-/// This is useful when you need to execute a custom SQL query that can't be generated by the macros.
+/// Retrieves multiple records from the database using a custom SQL query.
 /// 
 /// ## Parameters
 /// - `client`: Database connection client
-/// - `query`: Raw SQL query string
-/// - `params`: Query parameters as a slice of ToSql trait objects
+/// - `query`: Custom SQL query string
+/// - `params`: Array of query parameters
 /// 
 /// ## Return Value
 /// - `Result<Vec<T>, Error>`: On success, returns the list of found records; on failure, returns Error
 /// 
 /// ## Example Usage
-/// ```rust
-/// // Define a struct to hold the result
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::get_by_query;
+/// 
 /// #[derive(FromRow, Debug)]
-/// pub struct UserData {
-///     pub id: i32,
-///     pub name: String,
-///     pub email: String,
+/// pub struct UserStats {
+///     pub state: i16,
+///     pub user_count: i64,
 /// }
-/// 
-/// // Execute a custom query
-/// let query = "SELECT id, name, email FROM users WHERE state > $1 ORDER BY name";
-/// let params: &[&(dyn ToSql + Sync)] = &[&1_i16];
-/// 
-/// let results = get_by_query::<UserData>(&mut db, query, params);
-/// println!("Custom query results: {:?}", results);
+///
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
+///
+///     let query = "SELECT state, COUNT(*) as user_count FROM users GROUP BY state HAVING COUNT(*) > $1";
+///     let min_count = 5;
+///     
+///     let stats = get_by_query::<UserStats>(&mut client, query, &[&min_count])?;
+///     println!("User stats: {:?}", stats);
+///     Ok(())
+/// }
 /// ```
 pub fn get_by_query<T: FromRow>(
     client: &mut Client,
     query: &str,
     params: &[&(dyn ToSql + Sync)],
 ) -> Result<Vec<T>, Error> {
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", query);
+    }
+
     let rows = client.query(query, params)?;
-    
     rows.iter()
         .map(|row| T::from_row(row))
-        .collect()
+        .collect::<Result<Vec<_>, _>>()
 }
 
 /// # select
@@ -463,7 +540,7 @@ pub fn get_by_query<T: FromRow>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams)]          // Required macros (FromRow is not needed)
 /// #[table("table_name")]                   // Table name to query
 /// #[where_clause("id = $")]                // Query condition
@@ -471,40 +548,61 @@ pub fn get_by_query<T: FromRow>(
 ///     pub id: i32,                         // Field used in the query condition
 ///     // Other fields can be added if necessary for the query condition
 /// }
-/// ```
 /// 
-/// ## Example Usage
-/// ```rust
-/// // Define a query entity
-/// #[derive(Queryable, SqlParams, Debug)]
-/// #[table("users")]
-/// #[where_clause("id = $")]
-/// pub struct SelectUser {
+/// // A separate struct can be used for the return value
+/// pub struct MyResultEntity {
 ///     pub id: i32,
 ///     pub name: String,
-///     pub email: String,
-///     pub state: i16,
+///     pub count: i64,
+/// }
+/// ```
+/// 
+/// - `Queryable`: Automatically generates SQL SELECT statements
+/// - `SqlParams`: Automatically generates SQL parameters
+/// - `#[table("table_name")]`: Specifies the table name for the query
+/// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
+/// 
+/// ## Example Usage
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::select;
+/// 
+/// #[derive(Queryable, SqlParams)]
+/// #[table("users")]
+/// #[where_clause("id = $")]
+/// pub struct UserQuery {
+///     pub id: i32,
+/// }
+/// 
+/// impl UserQuery {
+///     pub fn new(id: i32) -> Self {
+///         Self { id }
+///     }
+/// }
+/// 
+/// // Different return structure
+/// pub struct User {
+///     pub id: i32,
+///     pub name: String,
 /// }
 ///
-/// // Create query parameters
-/// let select_user = SelectUser {
-///     id: 1,
-///     name: default::Default::default(),
-///     email: default::Default::default(),
-///     state: default::Default::default(),
-/// };
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
 ///
-/// // Execute query with custom transformation
-/// let select_result = select(&mut db, select_user, |row| {
-///     Ok(SelectUser {
-///         id: row.get(0),
-///         name: row.get(1),
-///         email: row.get(2),
-///         state: row.get(3),
-///     })
-/// });
-///
-/// println!("Select result: {:?}", select_result);
+///     // A custom model transformation function is required
+///     let user_query = UserQuery::new(1);
+///     let user = select(&mut client, user_query, |row| {
+///         let id: i32 = row.get("id");
+///         let name: String = row.get("name");
+///         Ok(User { id, name })
+///     })?;
+///     
+///     println!("User: {:?}", user);
+///     Ok(())
+/// }
 /// ```
 pub fn select<T: SqlQuery + SqlParams, F>(
     client: &mut postgres::Client,
@@ -515,17 +613,14 @@ where
     F: Fn(&Row) -> Result<T, Error>,
 {
     let sql = T::query();
-
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
 
     let params = entity.params();
 
-    let query = client.prepare(&sql).unwrap();
-
-    match client.query_one(&query, &params) {
-        Ok(row) => Ok(to_model(&row)?),
+    match client.query_one(&sql, &params) {
+        Ok(_row) => to_model(&_row),
         Err(e) => Err(e),
     }
 }
@@ -546,7 +641,7 @@ where
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams)]          // Required macros (FromRow is not needed)
 /// #[table("table_name")]                   // Table name to query
 /// #[select("id, name, COUNT(*) as count")] // Custom SELECT statement (optional)
@@ -555,41 +650,62 @@ where
 ///     pub active: bool,                    // Field used in the query condition
 ///     // Other fields can be added if necessary for the query condition
 /// }
+/// 
+/// // A separate struct can be used for the return value
+/// pub struct MyResultEntity {
+///     pub id: i32,
+///     pub name: String,
+///     pub count: i64,
+/// }
 /// ```
 /// 
+/// - `Queryable`: Automatically generates SQL SELECT statements
+/// - `SqlParams`: Automatically generates SQL parameters
+/// - `#[table("table_name")]`: Specifies the table name for the query
+/// - `#[select("...")]`: Creates a custom SELECT statement (if omitted, all fields will be selected)
+/// - `#[where_clause("active = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
+/// 
 /// ## Example Usage
-/// ```rust
-/// // Define a query entity
+/// ```rust,no_run
+/// use postgres::{Client, NoTls, Error};
+/// use parsql::postgres::select_all;
+/// 
 /// #[derive(Queryable, SqlParams)]
 /// #[table("users")]
-/// #[select("id, name, email, state")]
-/// #[where_clause("state > $")]
+/// #[select("id, name, email")]
 /// pub struct UsersQuery {
-///     pub min_state: i16,
+///     // Can be empty for a parameterless query
 /// }
 /// 
-/// // Define a result entity
+/// impl UsersQuery {
+///     pub fn new() -> Self {
+///         Self {}
+///     }
+/// }
+/// 
+/// // Different return structure
 /// pub struct User {
 ///     pub id: i32,
 ///     pub name: String,
-///     pub email: String,
-///     pub state: i16,
 /// }
 ///
-/// // Create query parameters
-/// let users_query = UsersQuery { min_state: 0 };
-/// 
-/// // Execute query with custom transformation
-/// let users = select_all(&mut db, users_query, |row| {
-///     Ok(User {
-///         id: row.get(0),
-///         name: row.get(1),
-///         email: row.get(2),
-///         state: row.get(3),
-///     })
-/// });
+/// fn main() -> Result<(), Error> {
+///     let mut client = Client::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     )?;
 ///
-/// println!("Users: {:?}", users);
+///     // A custom model transformation function is required
+///     let users_query = UsersQuery::new();
+///     let users = select_all(&mut client, users_query, |row| {
+///         let id: i32 = row.get("id");
+///         let name: String = row.get("name");
+///         User { id, name }
+///     })?;
+///     
+///     println!("Users: {:?}", users);
+///     Ok(())
+/// }
 /// ```
 pub fn select_all<T: SqlQuery + SqlParams, F>(
     client: &mut postgres::Client,
@@ -603,10 +719,12 @@ where
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
+
     let params = entity.params();
+
     let rows = client.query(&sql, &params)?;
 
     rows.iter()
         .map(|row| to_model(row))
-        .collect()
+        .collect::<Result<Vec<_>, _>>()
 }

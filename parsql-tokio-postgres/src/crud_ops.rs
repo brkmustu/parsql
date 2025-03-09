@@ -15,7 +15,7 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Insertable, SqlParams)]  // Required macros
 /// #[table("table_name")]            // Table name to insert into
 /// pub struct MyEntity {
@@ -30,7 +30,10 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 /// - `#[table("table_name")]`: Specifies the table name for the insertion
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{insert};
+/// 
 /// #[derive(Insertable, SqlParams)]
 /// #[table("users")]
 /// pub struct InsertUser {
@@ -39,14 +42,29 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 ///     pub state: i16,
 /// }
 ///
-/// let insert_user = InsertUser {
-///     name: "John".to_string(),
-///     email: "john@example.com".to_string(),
-///     state: 1_i16,
-/// };
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
 ///
-/// let insert_result = insert(&client, insert_user).await;
-/// println!("Insert result: {:?}", insert_result);
+///     let insert_user = InsertUser {
+///         name: "John".to_string(),
+///         email: "john@example.com".to_string(),
+///         state: 1_i16,
+///     };
+///
+///     let insert_result = insert(&client, insert_user).await?;
+///     println!("Insert result: {:?}", insert_result);
+///     Ok(())
+/// }
 /// ```
 pub async fn insert<T: SqlQuery + SqlParams>(
     client: &tokio_postgres::Client,
@@ -75,7 +93,7 @@ pub async fn insert<T: SqlQuery + SqlParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Updateable, UpdateParams)]  // Required macros
 /// #[table("table_name")]               // Table name to update
 /// #[update("field1, field2")]          // Fields to update (optional)
@@ -95,7 +113,10 @@ pub async fn insert<T: SqlQuery + SqlParams>(
 /// - `#[where_clause("id = $")]`: Specifies the update condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{update};
+/// 
 /// #[derive(Updateable, UpdateParams)]
 /// #[table("users")]
 /// #[update("name, email")]
@@ -107,15 +128,30 @@ pub async fn insert<T: SqlQuery + SqlParams>(
 ///     pub state: i16,  // This field won't be updated as it's not specified in the update attribute
 /// }
 ///
-/// let update_user = UpdateUser {
-///     id: 1,
-///     name: String::from("John"),
-///     email: String::from("john@example.com"),
-///     state: 2,
-/// };
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
 ///
-/// let update_result = update(&client, update_user).await;
-/// println!("Update result: {:?}", update_result);
+///     let update_user = UpdateUser {
+///         id: 1,
+///         name: String::from("John"),
+///         email: String::from("john@example.com"),
+///         state: 2,
+///     };
+///
+///     let update_result = update(&client, update_user).await?;
+///     println!("Update result: {:?}", update_result);
+///     Ok(())
+/// }
 /// ```
 pub async fn update<T: SqlQuery + UpdateParams>(
     client: &tokio_postgres::Client,
@@ -147,8 +183,8 @@ pub async fn update<T: SqlQuery + UpdateParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
-/// #[derive(Deleteable, SqlParams)]   // Required macros
+/// ```rust,no_run
+/// #[derive(Deletable, SqlParams)]   // Required macros
 /// #[table("table_name")]             // Table name to delete from
 /// #[where_clause("id = $")]          // Delete condition
 /// pub struct MyEntity {
@@ -157,24 +193,42 @@ pub async fn update<T: SqlQuery + UpdateParams>(
 /// }
 /// ```
 /// 
-/// - `Deleteable`: Automatically generates SQL DELETE statements
+/// - `Deletable`: Automatically generates SQL DELETE statements
 /// - `SqlParams`: Automatically generates SQL parameters
 /// - `#[table("table_name")]`: Specifies the table name for the deletion
 /// - `#[where_clause("id = $")]`: Specifies the delete condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
-/// #[derive(Deleteable, Debug, SqlParams)]
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{delete};
+/// 
+/// #[derive(Deletable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
 /// pub struct DeleteUser {
 ///     pub id: i32,
 /// }
 /// 
-/// let delete_user = DeleteUser { id: 6 };
-/// let delete_result = delete(&client, delete_user).await;
-/// 
-/// println!("Delete result: {:?}", delete_result);
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
+///
+///     let delete_user = DeleteUser { id: 6 };
+///     let delete_result = delete(&client, delete_user).await?;
+///     
+///     println!("Delete result: {:?}", delete_result);
+///     Ok(())
+/// }
 /// ```
 pub async fn delete<T: SqlQuery + SqlParams>(
     client: &tokio_postgres::Client,
@@ -206,7 +260,7 @@ pub async fn delete<T: SqlQuery + SqlParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]  // Required macros
 /// #[table("table_name")]                           // Table name to query
 /// #[where_clause("id = $")]                        // Query condition
@@ -237,7 +291,10 @@ pub async fn delete<T: SqlQuery + SqlParams>(
 /// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{get};
+/// 
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
@@ -259,10 +316,25 @@ pub async fn delete<T: SqlQuery + SqlParams>(
 ///     }
 /// }
 ///
-/// let get_user = GetUser::new(1_i32);
-/// let get_result = get(&client, &get_user).await;
-/// 
-/// println!("Get result: {:?}", get_result);
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
+///
+///     let get_user = GetUser::new(1);
+///     let get_result = get(&client, &get_user).await?;
+///     
+///     println!("Get result: {:?}", get_result);
+///     Ok(())
+/// }
 /// ```
 pub async fn get<T: SqlQuery + FromRow + SqlParams>(
     client: &tokio_postgres::Client,
@@ -294,7 +366,7 @@ pub async fn get<T: SqlQuery + FromRow + SqlParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]  // Required macros
 /// #[table("table_name")]                           // Table name to query
 /// #[select("field1, field2, COUNT(*) as count")]   // Custom SELECT statement (optional)
@@ -336,7 +408,10 @@ pub async fn get<T: SqlQuery + FromRow + SqlParams>(
 /// - `#[order_by("...")]`: Specifies the ORDER BY statement
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{get_all};
+/// 
 /// // Simple query example
 /// #[derive(Queryable, SqlParams, FromRow, Debug)]
 /// #[table("users")]
@@ -391,18 +466,33 @@ pub async fn get<T: SqlQuery + FromRow + SqlParams>(
 ///     pub user_count: i64,
 /// }
 ///
-/// // Example usage
-/// let select_user_with_posts = SelectUserWithPosts::new(1_i32);
-/// let get_user_with_posts = get_all(&client, &select_user_with_posts).await;
-/// 
-/// println!("Get user with posts: {:?}", get_user_with_posts);
-/// 
-/// // Other examples
-/// let user_state_stats = get_all(&client, &UserStateStats::new(0)).await;
-/// println!("User state stats: {:?}", user_state_stats);
-/// 
-/// let user_state_stats_filtered = get_all(&client, &UserStateStatsFiltered::new(0)).await;
-/// println!("User state stats (filtered with HAVING): {:?}", user_state_stats_filtered);
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
+///
+///     // Example usage
+///     let select_user_with_posts = SelectUserWithPosts::new(1);
+///     let get_user_with_posts = get_all(&client, &select_user_with_posts).await?;
+///     
+///     println!("Get user with posts: {:?}", get_user_with_posts);
+///     
+///     // Other examples
+///     let user_state_stats = get_all(&client, &UserStateStats::new(0)).await?;
+///     println!("User state stats: {:?}", user_state_stats);
+///     
+///     let user_state_stats_filtered = get_all(&client, &UserStateStatsFiltered::new(0)).await?;
+///     println!("User state stats (filtered with HAVING): {:?}", user_state_stats_filtered);
+///     Ok(())
+/// }
 /// ```
 pub async fn get_all<T: SqlQuery + FromRow + SqlParams>(
     client: &tokio_postgres::Client,
@@ -436,7 +526,7 @@ pub async fn get_all<T: SqlQuery + FromRow + SqlParams>(
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams)]          // Required macros (FromRow is not needed)
 /// #[table("table_name")]                   // Table name to query
 /// #[where_clause("id = $")]                // Query condition
@@ -459,7 +549,10 @@ pub async fn get_all<T: SqlQuery + FromRow + SqlParams>(
 /// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{select};
+/// 
 /// #[derive(Queryable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
@@ -479,13 +572,30 @@ pub async fn get_all<T: SqlQuery + FromRow + SqlParams>(
 ///     pub name: String,
 /// }
 ///
-/// // A custom model transformation function is required
-/// let user_query = UserQuery::new(1);
-/// let user = select(&client, user_query, |row| {
-///     let id: i32 = row.get("id");
-///     let name: String = row.get("name");
-///     Ok(User { id, name })
-/// }).await;
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
+///
+///     // A custom model transformation function is required
+///     let user_query = UserQuery::new(1);
+///     let user = select(&client, user_query, |row| {
+///         let id: i32 = row.get("id");
+///         let name: String = row.get("name");
+///         Ok(User { id, name })
+///     }).await?;
+///     
+///     println!("User: {:?}", user);
+///     Ok(())
+/// }
 /// ```
 pub async fn select<T: SqlQuery + SqlParams, F>(
     client: &tokio_postgres::Client,
@@ -524,7 +634,7 @@ where
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
-/// ```rust
+/// ```rust,no_run
 /// #[derive(Queryable, SqlParams)]          // Required macros (FromRow is not needed)
 /// #[table("table_name")]                   // Table name to query
 /// #[select("id, name, COUNT(*) as count")] // Custom SELECT statement (optional)
@@ -549,7 +659,10 @@ where
 /// - `#[where_clause("active = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
 /// 
 /// ## Example Usage
-/// ```rust
+/// ```rust,no_run
+/// use tokio_postgres::{NoTls, Error};
+/// use parsql::tokio_postgres::{select_all};
+/// 
 /// #[derive(Queryable, SqlParams)]
 /// #[table("users")]
 /// #[select("id, name, email")]
@@ -569,13 +682,30 @@ where
 ///     pub name: String,
 /// }
 ///
-/// // A custom model transformation function is required
-/// let users_query = UsersQuery::new();
-/// let users = select_all(&client, users_query, |row| {
-///     let id: i32 = row.get("id");
-///     let name: String = row.get("name");
-///     User { id, name }
-/// }).await;
+/// #[tokio::main]
+/// async fn main() -> Result<(), Error> {
+///     let (client, connection) = tokio_postgres::connect(
+///         "host=localhost user=postgres dbname=test",
+///         NoTls,
+///     ).await?;
+///     
+///     tokio::spawn(async move {
+///         if let Err(e) = connection.await {
+///             eprintln!("Connection error: {}", e);
+///         }
+///     });
+///
+///     // A custom model transformation function is required
+///     let users_query = UsersQuery::new();
+///     let users = select_all(&client, users_query, |row| {
+///         let id: i32 = row.get("id");
+///         let name: String = row.get("name");
+///         User { id, name }
+///     }).await?;
+///     
+///     println!("Users: {:?}", users);
+///     Ok(())
+/// }
 /// ```
 pub async fn select_all<T: SqlQuery + SqlParams, F>(
     client: &tokio_postgres::Client,
