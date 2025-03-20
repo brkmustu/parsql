@@ -58,7 +58,7 @@ pub trait CrudOps {
     /// 
     /// # Dönüş Değeri
     /// * `Result<T, Error>` - Getirilen kayıt veya hata
-    async fn get<T>(&self, params: &T) -> Result<T, Error>
+    async fn fetch<T>(&self, params: &T) -> Result<T, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync;
     
@@ -69,7 +69,7 @@ pub trait CrudOps {
     /// 
     /// # Dönüş Değeri
     /// * `Result<Vec<T>, Error>` - Getirilen kayıtlar veya hata
-    async fn get_all<T>(&self, params: &T) -> Result<Vec<T>, Error>
+    async fn fetch_all<T>(&self, params: &T) -> Result<Vec<T>, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync;
     
@@ -148,7 +148,7 @@ impl CrudOps for Pool {
         client.execute(&sql, &params).await
     }
 
-    async fn get<T>(&self, params: &T) -> Result<T, Error>
+    async fn fetch<T>(&self, params: &T) -> Result<T, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync
     {
@@ -164,7 +164,7 @@ impl CrudOps for Pool {
         T::from_row(&row)
     }
 
-    async fn get_all<T>(&self, params: &T) -> Result<Vec<T>, Error>
+    async fn fetch_all<T>(&self, params: &T) -> Result<Vec<T>, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync
     {

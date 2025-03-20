@@ -104,7 +104,7 @@ pub fn transaction_with_crud_ops(client: &mut Client) -> Result<(), Error> {
         state: 0,
     };
     
-    let user = tx.get(&get_user)?;
+    let user = tx.fetch(&get_user)?;
     println!("Güncellenmiş kullanıcı: {:?}", user);
     
     // Transaction'ı commit et

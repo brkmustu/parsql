@@ -10,7 +10,7 @@ version.workspace = true
 license.workspace = true
 
 [dependencies]
-parsql-deadpool-postgres = { path = "../../parsql-deadpool-postgres" }
+parsql = { path = "../../", version = "0.3.6", features = ["deadpool-postgres"] }
 tokio = { version = "1.41.1", features = ["full"] }
 deadpool-postgres = { version = "0.14.1", features = ["rt_tokio_1"]}
 tokio-postgres = { version = "0.7.13", features = ["with-chrono-0_4"] }

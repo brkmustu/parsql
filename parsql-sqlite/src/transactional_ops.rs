@@ -162,7 +162,7 @@ impl<'conn> CrudOps for Transaction<'conn> {
         self.execute(&sql, param_refs.as_slice())
     }
 
-    /// Gets a single record from the database and converts it to a struct.
+    /// Retrieves a single record from the database and converts it to a struct.
     /// This function is an extension to the Transaction struct and is available when the CrudOps trait is in scope.
     ///
     /// # Arguments
@@ -197,30 +197,35 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///         email: String::new(),
     ///     };
     ///     
-    ///     let user = tx.get(&param)?;
+    ///     let user = tx.fetch(&param)?;
     ///     
     ///     tx.commit()?;
     ///     println!("Found user: {} - {}", user.name, user.email);
     ///     Ok(())
     /// }
     /// ```
-    fn get<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<T, Error> {
+    fn fetch<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<T, Error> {
         let sql = T::query();
         
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
+        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+            println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+        }
         
         let params = entity.params();
         let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
         
         let mut stmt = self.prepare(&sql)?;
-        let row = stmt.query_row(param_refs.as_slice(), |row| T::from_row(row))?;
+        let mut rows = stmt.query(param_refs.as_slice())?;
         
-        Ok(row)
+        if let Some(row) = rows.next()? {
+            let result = T::from_row(row)?;
+            Ok(result)
+        } else {
+            Err(Error::QueryReturnedNoRows)
+        }
     }
 
-    /// Gets multiple records from the database and converts them to a vector of structs.
+    /// Retrieves multiple records from the database and converts them to a vector of structs.
     /// This function is an extension to the Transaction struct and is available when the CrudOps trait is in scope.
     ///
     /// # Arguments
@@ -252,24 +257,22 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     let param = GetUsers {
     ///         id: 0,
     ///         name: String::new(),
-    ///         email: "%example.com".to_string(),
+    ///         email: "%@example.com".to_string(),
     ///     };
     ///     
-    ///     let users = tx.get_all(&param)?;
+    ///     let users = tx.fetch_all(&param)?;
     ///     
     ///     tx.commit()?;
-    ///     for user in users {
-    ///         println!("Found user: {} - {}", user.name, user.email);
-    ///     }
+    ///     println!("Found {} users", users.len());
     ///     Ok(())
     /// }
     /// ```
-    fn get_all<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<Vec<T>, Error> {
+    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<Vec<T>, Error> {
         let sql = T::query();
         
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
+        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+            println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
+        }
         
         let params = entity.params();
         let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
@@ -407,13 +410,13 @@ impl<'conn> CrudOps for Transaction<'conn> {
     }
 }
 
-/// Begin a new transaction.
+/// Begins a new transaction.
 ///
 /// # Arguments
-/// * `conn` - A reference to a SQLite connection
+/// * `conn` - SQLite connection
 ///
 /// # Returns
-/// * `Result<Transaction>` - A new transaction or an error
+/// * `Result<Transaction<'_>, Error>` - Transaction or an error
 ///
 /// # Example
 /// ```rust,no_run
@@ -423,25 +426,23 @@ impl<'conn> CrudOps for Transaction<'conn> {
 /// fn main() -> Result<()> {
 ///     let conn = Connection::open("test.db")?;
 ///     let tx = transactional::begin(&conn)?;
-///     
-///     // ... perform operations ...
-///     
+///     // Perform operations within the transaction
 ///     tx.commit()?;
 ///     Ok(())
 /// }
 /// ```
-pub fn begin(conn: &Connection) -> Result<Transaction, Error> {
+pub fn begin(conn: &Connection) -> Result<Transaction<'_>, Error> {
     conn.unchecked_transaction()
 }
 
-/// Insert a record within a transaction.
+/// Inserts a record into the database within a transaction.
 ///
 /// # Arguments
-/// * `tx` - A transaction
+/// * `tx` - Transaction
 /// * `entity` - A struct that implements Insertable and SqlParams traits
 ///
 /// # Returns
-/// * `Result<(Transaction, usize)>` - The transaction and number of affected rows, or an error
+/// * `Result<(Transaction<'_>, usize), Error>` - Transaction and number of affected rows or an error
 ///
 /// # Example
 /// ```rust,no_run
@@ -472,21 +473,21 @@ pub fn begin(conn: &Connection) -> Result<Transaction, Error> {
 /// }
 /// ```
 pub fn tx_insert<'a, T: SqlQuery + SqlParams>(
-    tx: Transaction<'a>, 
-    entity: T
+    tx: Transaction<'a>,
+    entity: T,
 ) -> Result<(Transaction<'a>, usize), Error> {
-    let rows_affected = tx.insert(entity)?;
-    Ok((tx, rows_affected))
+    let result = tx.insert(entity)?;
+    Ok((tx, result))
 }
 
-/// Update a record within a transaction.
+/// Updates a record in the database within a transaction.
 ///
 /// # Arguments
-/// * `tx` - A transaction
+/// * `tx` - Transaction
 /// * `entity` - A struct that implements Updateable and UpdateParams traits
 ///
 /// # Returns
-/// * `Result<(Transaction, usize)>` - The transaction and number of affected rows, or an error
+/// * `Result<(Transaction<'_>, usize), Error>` - Transaction and number of affected rows or an error
 ///
 /// # Example
 /// ```rust,no_run
@@ -521,21 +522,21 @@ pub fn tx_insert<'a, T: SqlQuery + SqlParams>(
 /// }
 /// ```
 pub fn tx_update<'a, T: SqlQuery + UpdateParams>(
-    tx: Transaction<'a>, 
-    entity: T
+    tx: Transaction<'a>,
+    entity: T,
 ) -> Result<(Transaction<'a>, usize), Error> {
-    let rows_affected = tx.update(entity)?;
-    Ok((tx, rows_affected))
+    let result = tx.update(entity)?;
+    Ok((tx, result))
 }
 
-/// Delete a record within a transaction.
+/// Deletes a record from the database within a transaction.
 ///
 /// # Arguments
-/// * `tx` - A transaction
+/// * `tx` - Transaction
 /// * `entity` - A struct that implements Deletable and SqlParams traits
 ///
 /// # Returns
-/// * `Result<(Transaction, usize)>` - The transaction and number of affected rows, or an error
+/// * `Result<(Transaction<'_>, usize), Error>` - Transaction and number of affected rows or an error
 ///
 /// # Example
 /// ```rust,no_run
@@ -563,21 +564,21 @@ pub fn tx_update<'a, T: SqlQuery + UpdateParams>(
 /// }
 /// ```
 pub fn tx_delete<'a, T: SqlQuery + SqlParams>(
-    tx: Transaction<'a>, 
-    entity: T
+    tx: Transaction<'a>,
+    entity: T,
 ) -> Result<(Transaction<'a>, usize), Error> {
-    let rows_affected = tx.delete(entity)?;
-    Ok((tx, rows_affected))
+    let result = tx.delete(entity)?;
+    Ok((tx, result))
 }
 
-/// Get a single record within a transaction.
+/// Fetches a single record from the database within a transaction.
 ///
 /// # Arguments
-/// * `tx` - A transaction
+/// * `tx` - Transaction
 /// * `entity` - A struct that implements Queryable, SqlParams, and FromRow traits
 ///
 /// # Returns
-/// * `Result<(Transaction, T)>` - The transaction and retrieved record, or an error
+/// * `Result<(Transaction<'_>, T), Error>` - Transaction and the retrieved record or an error
 ///
 /// # Example
 /// ```rust,no_run
@@ -604,7 +605,7 @@ pub fn tx_delete<'a, T: SqlQuery + SqlParams>(
 ///         email: String::new(),
 ///     };
 ///     
-///     let (tx, user) = transactional::tx_get(tx, &param)?;
+///     let (tx, user) = transactional::tx_fetch(tx, &param)?;
 ///     
 ///     println!("Found user: {} - {}", user.name, user.email);
 ///     
@@ -612,22 +613,22 @@ pub fn tx_delete<'a, T: SqlQuery + SqlParams>(
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
-    tx: Transaction<'a>, 
-    entity: &T
+pub fn tx_fetch<'a, T: SqlQuery + FromRow + SqlParams>(
+    tx: Transaction<'a>,
+    entity: &T,
 ) -> Result<(Transaction<'a>, T), Error> {
-    let result = tx.get(entity)?;
+    let result = tx.fetch(entity)?;
     Ok((tx, result))
 }
 
-/// Get multiple records within a transaction.
+/// Fetches multiple records from the database within a transaction.
 ///
 /// # Arguments
-/// * `tx` - A transaction
+/// * `tx` - Transaction
 /// * `entity` - A struct that implements Queryable, SqlParams, and FromRow traits
 ///
 /// # Returns
-/// * `Result<(Transaction, Vec<T>)>` - The transaction and retrieved records, or an error
+/// * `Result<(Transaction<'_>, Vec<T>), Error>` - Transaction and a vector of retrieved records or an error
 ///
 /// # Example
 /// ```rust,no_run
@@ -637,39 +638,83 @@ pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
 ///
 /// #[derive(Queryable, SqlParams, FromRow)]
 /// #[table("users")]
-/// #[where_clause("email LIKE ?")]
-/// struct GetUsers {
+/// #[where_clause("active = ?")]
+/// struct GetActiveUsers {
 ///     id: i64,
 ///     name: String,
 ///     email: String,
+///     active: i32,
 /// }
 ///
 /// fn main() -> Result<()> {
 ///     let conn = Connection::open("test.db")?;
 ///     let tx = transactional::begin(&conn)?;
 ///     
-///     let param = GetUsers {
+///     let param = GetActiveUsers {
 ///         id: 0,
 ///         name: String::new(),
-///         email: "%example.com".to_string(),
+///         email: String::new(),
+///         active: 1,
 ///     };
 ///     
-///     let (tx, users) = transactional::tx_get_all(tx, &param)?;
+///     let (tx, users) = transactional::tx_fetch_all(tx, &param)?;
 ///     
-///     for user in users {
-///         println!("Found user: {} - {}", user.name, user.email);
-///     }
+///     println!("Found {} active users", users.len());
 ///     
 ///     tx.commit()?;
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_get_all<'a, T: SqlQuery + FromRow + SqlParams>(
-    tx: Transaction<'a>, 
-    entity: &T
+pub fn tx_fetch_all<'a, T: SqlQuery + FromRow + SqlParams>(
+    tx: Transaction<'a>,
+    entity: &T,
 ) -> Result<(Transaction<'a>, Vec<T>), Error> {
-    let results = tx.get_all(entity)?;
+    let results = tx.fetch_all(entity)?;
     Ok((tx, results))
+}
+
+/// Gets a single record from the database within a transaction.
+/// 
+/// # Deprecated
+/// This function has been renamed to `tx_fetch`. Please use `tx_fetch` instead.
+///
+/// # Arguments
+/// * `tx` - Transaction
+/// * `entity` - A struct that implements Queryable, SqlParams, and FromRow traits
+///
+/// # Returns
+/// * `Result<(Transaction<'_>, T), Error>` - Transaction and the retrieved record or an error
+#[deprecated(
+    since = "0.3.6",
+    note = "Renamed to `tx_fetch`. Please use `tx_fetch` function instead."
+)]
+pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
+    tx: Transaction<'a>,
+    entity: &T,
+) -> Result<(Transaction<'a>, T), Error> {
+    tx_fetch(tx, entity)
+}
+
+/// Gets multiple records from the database within a transaction.
+/// 
+/// # Deprecated
+/// This function has been renamed to `tx_fetch_all`. Please use `tx_fetch_all` instead.
+///
+/// # Arguments
+/// * `tx` - Transaction
+/// * `entity` - A struct that implements Queryable, SqlParams, and FromRow traits
+///
+/// # Returns
+/// * `Result<(Transaction<'_>, Vec<T>), Error>` - Transaction and a vector of retrieved records or an error
+#[deprecated(
+    since = "0.3.6",
+    note = "Renamed to `tx_fetch_all`. Please use `tx_fetch_all` function instead."
+)]
+pub fn tx_get_all<'a, T: SqlQuery + FromRow + SqlParams>(
+    tx: Transaction<'a>,
+    entity: &T,
+) -> Result<(Transaction<'a>, Vec<T>), Error> {
+    tx_fetch_all(tx, entity)
 }
 
 /// Execute a custom SELECT query within a transaction and transform the result.

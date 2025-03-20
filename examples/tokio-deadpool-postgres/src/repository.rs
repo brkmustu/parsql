@@ -1,5 +1,5 @@
 use deadpool_postgres::Pool;
-use parsql_deadpool_postgres::{delete, get, get_all, insert, select_all, update, Error};
+use parsql::deadpool_postgres::{delete, get, get_all, insert, select_all, update, Error};
 use tokio_postgres::Row as PgRow;
 
 use crate::models::{UserById, UserDelete, UserInsert, UserUpdate, UsersByState, UserStatusQuery};

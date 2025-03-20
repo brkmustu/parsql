@@ -219,7 +219,7 @@ where
 /// * `params` - Data object containing query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
 /// 
 /// # Return Value
-/// * `Result<(Transaction<'_>, T), Error>` - On success, returns the transaction and the retrieved record
+/// * `Result<(Transaction<'_>, T), Error>` - On success, returns the transaction and the record
 ///
 /// # Example
 /// ```rust,no_run
@@ -246,12 +246,12 @@ where
 /// };
 ///
 /// let transaction = transactional::begin(&client).await?;
-/// let (transaction, user) = transactional::tx_get(transaction, query).await?;
+/// let (transaction, user) = transactional::tx_fetch(transaction, query).await?;
 /// transaction.commit().await?;
 /// # Ok(())
 /// # }
 /// ```
-pub async fn tx_get<T>(
+pub async fn tx_fetch<T>(
     transaction: Transaction<'_>,
     params: T,
 ) -> Result<(Transaction<'_>, T), Error>
@@ -311,12 +311,12 @@ where
 /// };
 ///
 /// let transaction = transactional::begin(&client).await?;
-/// let (transaction, users) = transactional::tx_get_all(transaction, query).await?;
+/// let (transaction, users) = transactional::tx_fetch_all(transaction, query).await?;
 /// transaction.commit().await?;
 /// # Ok(())
 /// # }
 /// ```
-pub async fn tx_get_all<T>(
+pub async fn tx_fetch_all<T>(
     transaction: Transaction<'_>,
     params: T,
 ) -> Result<(Transaction<'_>, Vec<T>), Error>
@@ -343,6 +343,56 @@ where
     }
     
     Ok((transaction, results))
+}
+
+/// Retrieves a single record within a transaction.
+/// 
+/// # Deprecated
+/// This function has been renamed to `tx_fetch`. Please use `tx_fetch` instead.
+///
+/// # Arguments
+/// * `transaction` - An active transaction
+/// * `params` - Data object containing query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
+/// 
+/// # Return Value
+/// * `Result<(Transaction<'_>, T), Error>` - On success, returns the transaction and the record
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `tx_fetch`. Please use `tx_fetch` function instead."
+)]
+pub async fn tx_get<T>(
+    transaction: Transaction<'_>,
+    params: T,
+) -> Result<(Transaction<'_>, T), Error>
+where
+    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static
+{
+    tx_fetch(transaction, params).await
+}
+
+/// Retrieves multiple records within a transaction.
+/// 
+/// # Deprecated
+/// This function has been renamed to `tx_fetch_all`. Please use `tx_fetch_all` instead.
+///
+/// # Arguments
+/// * `transaction` - An active transaction
+/// * `params` - Data object containing query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
+/// 
+/// # Return Value
+/// * `Result<(Transaction<'_>, Vec<T>), Error>` - On success, returns the transaction and a vector of records
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `tx_fetch_all`. Please use `tx_fetch_all` function instead."
+)]
+pub async fn tx_get_all<T>(
+    transaction: Transaction<'_>,
+    params: T,
+) -> Result<(Transaction<'_>, Vec<T>), Error>
+where
+    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static
+{
+    tx_fetch_all(transaction, params).await
 }
 
 /// Implementation of the CrudOps trait for Transactions
@@ -443,7 +493,7 @@ impl<'a> CrudOps for Transaction<'a> {
         self.execute(&sql, &params).await
     }
 
-    async fn get<T>(&self, params: T) -> Result<T, Error>
+    async fn fetch<T>(&self, params: T) -> Result<T, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
     {
@@ -463,7 +513,7 @@ impl<'a> CrudOps for Transaction<'a> {
         T::from_row(&row)
     }
 
-    async fn get_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    async fn fetch_all<T>(&self, params: T) -> Result<Vec<T>, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
     {
@@ -487,6 +537,24 @@ impl<'a> CrudOps for Transaction<'a> {
         }
         
         Ok(results)
+    }
+    
+    // Use #[allow(deprecated)] to suppress warnings when implementing deprecated methods
+    #[allow(deprecated)]
+    async fn get<T>(&self, params: T) -> Result<T, Error>
+    where
+        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    {
+        self.fetch(params).await
+    }
+
+    // Use #[allow(deprecated)] to suppress warnings when implementing deprecated methods
+    #[allow(deprecated)]
+    async fn get_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    where
+        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    {
+        self.fetch_all(params).await
     }
 
     async fn select<T, F, R>(&self, entity: T, to_model: F) -> Result<R, Error>
@@ -532,8 +600,8 @@ impl<'a> CrudOps for Transaction<'a> {
         let rows = self.query(&sql, &params).await?;
         
         let mut results = Vec::with_capacity(rows.len());
-        for row in rows {
-            results.push(to_model(&row));
+        for row in &rows {
+            results.push(to_model(row));
         }
         
         Ok(results)

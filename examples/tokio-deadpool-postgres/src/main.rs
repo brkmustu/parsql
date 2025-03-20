@@ -6,7 +6,7 @@ use crate::config::DatabaseConfig;
 use crate::models::{UserInsert, UserUpdate, UserDelete, UserById, UsersByState, UserStatusQuery};
 use crate::repository::UserRepository;
 use dotenv::dotenv;
-use parsql_deadpool_postgres::Error;
+use parsql::deadpool_postgres::Error;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 #[tokio::main]

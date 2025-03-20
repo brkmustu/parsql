@@ -14,7 +14,7 @@ default = []
 [dependencies]
 postgres = { version = "0.19.10" }
 tokio-postgres = { version = "0.7.13" }
-async-trait = "0.1.87"
+async-trait = "0.1.88"
 
 [dependencies.parsql-macros]
 workspace = true

@@ -152,11 +152,11 @@ pub trait CrudOps {
     ///     email: Default::default(),
     /// };
     ///
-    /// let user = client.get(query).await?;
+    /// let user = client.fetch(query).await?;
     /// # Ok(())
     /// # }
     /// ```
-    async fn get<T>(&self, params: T) -> Result<T, Error>
+    async fn fetch<T>(&self, params: T) -> Result<T, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static;
 
@@ -194,11 +194,11 @@ pub trait CrudOps {
     ///     state: 1, // active users
     /// };
     ///
-    /// let users = client.get_all(query).await?;
+    /// let users = client.fetch_all(query).await?;
     /// # Ok(())
     /// # }
     /// ```
-    async fn get_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    async fn fetch_all<T>(&self, params: T) -> Result<Vec<T>, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static;
 
@@ -305,6 +305,28 @@ pub trait CrudOps {
         T: SqlQuery + SqlParams + Send + Sync + 'static,
         F: Fn(&Row) -> R + Send + Sync + 'static,
         R: Send + 'static;
+
+    #[deprecated(
+        since = "0.2.0",
+        note = "Renamed to `fetch`. Please use `fetch` function instead."
+    )]
+    async fn get<T>(&self, params: T) -> Result<T, Error>
+    where
+        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    {
+        self.fetch(params).await
+    }
+
+    #[deprecated(
+        since = "0.2.0",
+        note = "Renamed to `fetch_all`. Please use `fetch_all` function instead."
+    )]
+    async fn get_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    where
+        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    {
+        self.fetch_all(params).await
+    }
 }
 
 #[async_trait::async_trait]
@@ -367,7 +389,7 @@ impl CrudOps for Client {
         self.execute(&sql, &params).await
     }
 
-    async fn get<T>(&self, params: T) -> Result<T, Error>
+    async fn fetch<T>(&self, params: T) -> Result<T, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
     {
@@ -387,7 +409,7 @@ impl CrudOps for Client {
         T::from_row(&row)
     }
 
-    async fn get_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    async fn fetch_all<T>(&self, params: T) -> Result<Vec<T>, Error>
     where
         T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
     {
@@ -524,7 +546,7 @@ where
     client.delete(entity).await
 }
 
-/// # get
+/// # fetch
 /// 
 /// Retrieves a single record from the database and converts it to a struct.
 /// 
@@ -534,17 +556,17 @@ where
 /// 
 /// ## Return Value
 /// - `Result<T, Error>`: On success, returns the retrieved record as a struct; on failure, returns Error
-pub async fn get<T>(
+pub async fn fetch<T>(
     client: &Client,
     params: T,
 ) -> Result<T, Error>
 where
     T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static
 {
-    client.get(params).await
+    client.fetch(params).await
 }
 
-/// # get_all
+/// # fetch_all
 /// 
 /// Retrieves multiple records from the database.
 /// 
@@ -554,14 +576,14 @@ where
 /// 
 /// ## Return Value
 /// - `Result<Vec<T>, Error>`: On success, returns the list of found records; on failure, returns Error
-pub async fn get_all<T>(
+pub async fn fetch_all<T>(
     client: &Client,
     params: T,
 ) -> Result<Vec<T>, Error>
 where
     T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static
 {
-    client.get_all(params).await
+    client.fetch_all(params).await
 }
 
 /// # select
@@ -612,4 +634,60 @@ where
     R: Send + 'static
 {
     client.select_all(entity, to_model).await
+}
+
+// DEPRECATED FUNCTIONS - For backward compatibility
+
+/// # get
+/// 
+/// Retrieves a single record from the database and converts it to a struct.
+/// 
+/// # Deprecated
+/// This function has been renamed to `fetch`. Please use `fetch` instead.
+/// 
+/// # Arguments
+/// * `client` - Database connection client
+/// * `params` - Query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
+/// 
+/// # Return Value
+/// * `Result<T, Error>` - On success, returns the retrieved record; on failure, returns Error
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `fetch`. Please use `fetch` function instead."
+)]
+pub async fn get<T>(
+    client: &Client,
+    params: T,
+) -> Result<T, Error>
+where
+    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static
+{
+    fetch(client, params).await
+}
+
+/// # get_all
+/// 
+/// Retrieves multiple records from the database.
+/// 
+/// # Deprecated
+/// This function has been renamed to `fetch_all`. Please use `fetch_all` instead.
+/// 
+/// # Arguments
+/// * `client` - Database connection client
+/// * `params` - Query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
+/// 
+/// # Return Value
+/// * `Result<Vec<T>, Error>` - On success, returns the list of found records; on failure, returns Error
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `fetch_all`. Please use `fetch_all` function instead."
+)]
+pub async fn get_all<T>(
+    client: &Client,
+    params: T,
+) -> Result<Vec<T>, Error>
+where
+    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static
+{
+    fetch_all(client, params).await
 }

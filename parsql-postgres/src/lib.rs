@@ -16,7 +16,7 @@
 //!
 //! ```rust,no_run
 //! use postgres::{Client, NoTls, Error};
-//! use parsql::postgres::{get, insert};
+//! use parsql::postgres::{fetch, insert};
 //!
 //! #[derive(Insertable, SqlParams)]
 //! #[table("users")]
@@ -50,7 +50,7 @@
 //!     
 //!     // Get the user back
 //!     let get_user = GetUser::new(id as i32);
-//!     let user = get(&mut client, &get_user)?;
+//!     let user = fetch(&mut client, &get_user)?;
 //!     
 //!     println!("User: {:?}", user);
 //!     Ok(())
@@ -99,7 +99,8 @@
 //!         name: String::new(),
 //!         email: String::new(),
 //!     };
-//!     let user = client.get(&get_user)?;
+//!     
+//!     let user = client.fetch(&get_user)?;
 //!     
 //!     println!("User: {:?}", user);
 //!     Ok(())
@@ -108,88 +109,37 @@
 //!
 //! ## Using Transactions
 //!
-//! This crate supports transaction operations in two ways: through the `CrudOps` trait
-//! methods directly on a `Transaction` object, or through the helper functions provided
-//! in the `transactional` module.
-//!
-//! ### Using CrudOps with Transaction
-//!
-//! ```rust,no_run
-//! use postgres::{Client, NoTls, Error};
-//! use parsql::postgres::CrudOps;
-//! use parsql::macros::{Insertable, SqlParams, Updateable, UpdateParams};
-//!
-//! #[derive(Insertable, SqlParams)]
-//! #[table("users")]
-//! struct InsertUser {
-//!     name: String,
-//!     email: String,
-//! }
-//!
-//! #[derive(Updateable, UpdateParams)]
-//! #[table("users")]
-//! #[update("email")]
-//! #[where_clause("id = $")]
-//! struct UpdateUser {
-//!     id: i32,
-//!     email: String,
-//! }
-//!
-//! fn main() -> Result<(), Error> {
-//!     let mut client = Client::connect("host=localhost user=postgres", NoTls)?;
-//!     
-//!     // Start a transaction
-//!     let mut tx = client.transaction()?;
-//!     
-//!     // Use CrudOps methods directly on the transaction
-//!     let insert_user = InsertUser {
-//!         name: "John".to_string(),
-//!         email: "john@example.com".to_string(),
-//!     };
-//!     let rows_affected = tx.insert(insert_user)?;
-//!     
-//!     let update_user = UpdateUser {
-//!         id: 1,
-//!         email: "john.updated@example.com".to_string(),
-//!     };
-//!     let rows_updated = tx.update(update_user)?;
-//!     
-//!     // Commit the transaction
-//!     tx.commit()?;
-//!     Ok(())
-//! }
-//! ```
-//!
-//! ### Using Transaction Helper Functions
+//! You can also use transactions to ensure atomicity of operations:
 //!
 //! ```rust,no_run
 //! use postgres::{Client, NoTls, Error};
 //! use parsql::postgres::transactional::{begin, tx_insert, tx_update};
-//! use parsql::macros::{Insertable, SqlParams, Updateable, UpdateParams};
 //!
 //! #[derive(Insertable, SqlParams)]
 //! #[table("users")]
-//! struct InsertUser {
-//!     name: String,
-//!     email: String,
+//! pub struct InsertUser {
+//!     pub name: String,
+//!     pub email: String,
 //! }
 //!
 //! #[derive(Updateable, UpdateParams)]
 //! #[table("users")]
-//! #[update("email")]
-//! #[where_clause("id = $")]
-//! struct UpdateUser {
-//!     id: i32,
-//!     email: String,
+//! #[where_clause("id = $1")]
+//! pub struct UpdateUser {
+//!     pub id: i32,
+//!     pub email: String,
 //! }
 //!
 //! fn main() -> Result<(), Error> {
-//!     let mut client = Client::connect("host=localhost user=postgres", NoTls)?;
+//!     let mut client = Client::connect(
+//!         "host=localhost user=postgres dbname=test",
+//!         NoTls,
+//!     )?;
 //!     
-//!     // Begin a transaction
+//!     // Start a transaction
 //!     let tx = begin(&mut client)?;
 //!     
-//!     // Chain transaction operations
+//!     // Insert a new user within the transaction
 //!     let insert_user = InsertUser {
 //!         name: "John".to_string(),
 //!         email: "john@example.com".to_string(),
@@ -197,6 +147,7 @@
 //!     
 //!     let (tx, _) = tx_insert(tx, insert_user)?;
 //!     
+//!     // Update the user within the same transaction
 //!     let update_user = UpdateUser {
 //!         id: 1,
 //!         email: "john.updated@example.com".to_string(),
@@ -219,14 +170,22 @@ pub use postgres::{Client, Error, Row};
 
 // Re-export crud operations
 pub use crud_ops::{
-    delete, get, get_all, get_by_query, insert, select, select_all, update, CrudOps,
+    delete, fetch, fetch_all, get_by_query, insert, select, select_all, update, CrudOps,
 };
+
+// Eski isimlerle fonksiyonları deprecated olarak dışa aktar
+#[allow(deprecated)]
+pub use crud_ops::{get, get_all};
 
 // Re-export transaction operations in a transactional module
 pub mod transactional {
     pub use crate::transaction_ops::{
-        begin, tx_delete, tx_get, tx_get_all, tx_insert, tx_select, tx_select_all, tx_update,
+        begin, tx_delete, tx_fetch, tx_fetch_all, tx_insert, tx_select, tx_select_all, tx_update,
     };
+    
+    // Eski isimlerle fonksiyonları deprecated olarak dışa aktar
+    #[allow(deprecated)]
+    pub use crate::transaction_ops::{tx_get, tx_get_all};
 }
 
 pub use parsql_macros as macros;

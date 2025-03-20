@@ -34,7 +34,7 @@ impl<'a> CrudOps for Transaction<'a> {
         self.execute(&sql, &params)
     }
 
-    fn get<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error> {
+    fn fetch<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error> {
         let sql = T::query();
         if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
             println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
@@ -45,7 +45,7 @@ impl<'a> CrudOps for Transaction<'a> {
         T::from_row(&row)
     }
 
-    fn get_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error> {
+    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error> {
         let sql = T::query();
         if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
             println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
@@ -99,7 +99,7 @@ impl<'a> CrudOps for Transaction<'a> {
 /// - `client`: Veritabanı bağlantı istemcisi
 /// 
 /// ## Dönüş Değeri
-/// - `Result<Transaction<'_>, Error>`: Başarılı olursa, yeni bir transaction nesnesi döner; hata durumunda Error döner
+/// - `Result<Transaction<'_>, Error>`: Başarılı olursa, transaction nesnesini döner; hata durumunda Error döner
 /// 
 /// ## Örnek Kullanım
 /// ```rust,no_run
@@ -112,8 +112,7 @@ impl<'a> CrudOps for Transaction<'a> {
 ///         NoTls,
 ///     )?;
 ///     
-///     // Transaction başlat
-///     let mut tx = begin(&mut client)?;
+///     let tx = begin(&mut client)?;
 ///     
 ///     // İşlemler...
 ///     
@@ -123,9 +122,6 @@ impl<'a> CrudOps for Transaction<'a> {
 /// }
 /// ```
 pub fn begin<'a>(client: &'a mut postgres::Client) -> Result<Transaction<'a>, Error> {
-    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-        println!("[PARSQL-POSTGRES] Begin Transaction");
-    }
     client.transaction()
 }
 
@@ -289,9 +285,9 @@ where
     Ok((tx, result))
 }
 
-/// # tx_get
+/// # tx_fetch
 /// 
-/// Transaction içinde bir kaydı getirir.
+/// Transaction içinde tek bir kaydı getirir.
 /// 
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
@@ -303,7 +299,7 @@ where
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
-/// use parsql::postgres::transactional::{begin, tx_get};
+/// use parsql::postgres::transactional::{begin, tx_fetch};
 /// 
 /// #[derive(Queryable, FromRow, SqlParams)]
 /// #[table("users")]
@@ -328,7 +324,7 @@ where
 ///         email: String::new(),
 ///     };
 ///     
-///     let (tx, user) = tx_get(tx, &get_user)?;
+///     let (tx, user) = tx_fetch(tx, &get_user)?;
 ///     
 ///     // İşlemler devam edebilir...
 ///     
@@ -337,15 +333,15 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_get<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, T), Error>
+pub fn tx_fetch<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, T), Error>
 where
     T: SqlQuery + FromRow + SqlParams,
 {
-    let result = tx.get(entity)?;
+    let result = tx.fetch(entity)?;
     Ok((tx, result))
 }
 
-/// # tx_get_all
+/// # tx_fetch_all
 /// 
 /// Transaction içinde birden fazla kaydı getirir.
 /// 
@@ -359,7 +355,7 @@ where
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
-/// use parsql::postgres::transactional::{begin, tx_get_all};
+/// use parsql::postgres::transactional::{begin, tx_fetch_all};
 /// 
 /// #[derive(Queryable, FromRow, SqlParams)]
 /// #[table("users")]
@@ -386,7 +382,7 @@ where
 ///         email: String::new(),
 ///     };
 ///     
-///     let (tx, users) = tx_get_all(tx, &get_users)?;
+///     let (tx, users) = tx_fetch_all(tx, &get_users)?;
 ///     
 ///     // İşlemler devam edebilir...
 ///     
@@ -395,11 +391,11 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_get_all<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, Vec<T>), Error>
+pub fn tx_fetch_all<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, Vec<T>), Error>
 where
     T: SqlQuery + FromRow + SqlParams,
 {
-    let result = tx.get_all(entity)?;
+    let result = tx.fetch_all(entity)?;
     Ok((tx, result))
 }
 
@@ -440,5 +436,41 @@ where
     F: FnMut(&Row) -> Result<R, Error>,
 {
     let result = tx.select_all(entity, to_model)?;
+    Ok((tx, result))
+}
+
+// Geriye dönük uyumluluk için eski tx_get fonksiyonunu koruyalım
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `tx_fetch`. Please use `tx_fetch` function instead."
+)]
+/// # tx_get
+/// 
+/// Transaction içinde tek bir kaydı getirir.
+/// 
+/// This function is deprecated. Please use `tx_fetch` instead.
+pub fn tx_get<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, T), Error>
+where
+    T: SqlQuery + FromRow + SqlParams,
+{
+    let result = tx.fetch(entity)?;
+    Ok((tx, result))
+}
+
+// Geriye dönük uyumluluk için eski tx_get_all fonksiyonunu koruyalım
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `tx_fetch_all`. Please use `tx_fetch_all` function instead."
+)]
+/// # tx_get_all
+/// 
+/// Transaction içinde birden fazla kaydı getirir.
+/// 
+/// This function is deprecated. Please use `tx_fetch_all` instead.
+pub fn tx_get_all<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, Vec<T>), Error>
+where
+    T: SqlQuery + FromRow + SqlParams,
+{
+    let result = tx.fetch_all(entity)?;
     Ok((tx, result))
 }

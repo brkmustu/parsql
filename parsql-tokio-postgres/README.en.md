@@ -7,7 +7,7 @@ Tokio PostgreSQL integration crate for parsql. This package provides asynchronou
 - Asynchronous PostgreSQL operations (with tokio runtime)
 - Automatic SQL query generation
 - Secure parameter management
-- Generic CRUD operations (get, insert, update, delete)
+- Generic CRUD operations (fetch, insert, update, delete)
 - Conversion of database rows to structs
 - Deadpool connection pool support
 - Automatic protection against SQL Injection attacks
@@ -46,7 +46,7 @@ let query = UserQuery {
 
 // Generated query: "SELECT * FROM users WHERE username = $1 AND status = $2"
 // Parameters are safely sent as: [user_input, 1]
-let user = get(&client, query).await?;
+let user = fetch(&client, query).await?;
 ```
 
 ## Installation
@@ -149,8 +149,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 There are two approaches provided for performing database operations:
 
-1. Function-based approach (`get`, `insert`, `update`, etc.)
-2. Extension method approach (`client.get()`, `client.insert()`, etc.) - `CrudOps` trait
+1. Function-based approach (`fetch`, `insert`, `update`, etc.)
+2. Extension method approach (`client.fetch()`, `client.insert()`, etc.) - `CrudOps` trait
 
 ### Extension Method Approach (CrudOps Trait)
 
@@ -194,20 +194,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Using extension method
     let get_user = GetUser::new(1);
-    let user = client.get(get_user).await?;
+    let user = client.fetch(get_user).await?;
     
     println!("User: {:?}", user);
     Ok(())
 }
 ```
 
-### Reading Data (Get)
+### Reading Data (Fetch)
 
 ```rust
 use parsql::{
     core::Queryable,
     macros::{FromRow, Queryable, SqlParams},
-    tokio_postgres::{FromRow, SqlParams, get, CrudOps},
+    tokio_postgres::{FromRow, SqlParams, fetch, CrudOps},
 };
 use tokio_postgres::{types::ToSql, Row};
 
@@ -247,11 +247,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Usage (function approach)
     let get_user = GetUser::new(1);
-    let get_result = get(&client, get_user).await?;
+    let get_result = fetch(&client, get_user).await?;
     
     // or (extension method approach)
     let get_user = GetUser::new(1);
-    let get_result = client.get(get_user).await?;
+    let get_result = client.fetch(get_user).await?;
     
     println!("User: {:?}", get_result);
     Ok(())
@@ -598,7 +598,7 @@ async fn handle_database() -> Result<(), Box<dyn std::error::Error>> {
         }
     });
     
-    let result = match get(&client, user_query).await {
+    let result = match fetch(&client, user_query).await {
         Ok(user) => {
             println!("User found: {:?}", user);
             // Operation successful

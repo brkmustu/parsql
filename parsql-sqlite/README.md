@@ -7,7 +7,7 @@ Parsql için SQLite entegrasyon küfesidir. Bu paket, parsql'in SQLite veritaban
 - Senkron SQLite işlemleri
 - Otomatik SQL sorgu oluşturma
 - Güvenli parametre yönetimi
-- Generic CRUD işlemleri (get, insert, update)
+- Generic CRUD işlemleri (fetch, insert, update)
 - Veritabanı satırlarını struct'lara dönüştürme
 - SQL Injection saldırılarına karşı otomatik koruma
 - Transaction desteği
@@ -42,7 +42,7 @@ let query = UserQuery {
 
 // Oluşturulan sorgu: "SELECT * FROM users WHERE username = ? AND status = ?"
 // Parametreler güvenli bir şekilde: [kullanici_girdisi, 1] olarak gönderilir
-let user = get(&conn, query)?;
+let user = fetch(&conn, &query)?;
 ```
 
 ## Kurulum
@@ -66,8 +66,8 @@ parsql-macros = "0.3.2"
 
 Parsql-sqlite, SQLite veritabanlarıyla çalışmak için iki farklı yaklaşım sunar:
 
-1. Fonksiyon tabanlı yaklaşım (`get`, `insert`, `update`, vb.)
-2. Extension metot yaklaşımı (`conn.get()`, `conn.insert()`, vb.) - `CrudOps` trait
+1. Fonksiyon tabanlı yaklaşım (`fetch`, `insert`, `update`, vb.)
+2. Extension metot yaklaşımı (`conn.fetch()`, `conn.insert()`, vb.) - `CrudOps` trait
 
 ### Bağlantı Kurma
 
@@ -98,7 +98,7 @@ fn main() -> Result<()> {
 
 ```rust
 use rusqlite::{Connection, Result};
-use parsql::sqlite::{get, insert};
+use parsql::sqlite::{fetch, insert};
 use parsql::macros::{Insertable, SqlParams, Queryable, FromRow};
 
 #[derive(Insertable, SqlParams)]
@@ -133,7 +133,7 @@ fn main() -> Result<()> {
         name: String::new(),
         email: String::new(),
     };
-    let user = get(&conn, &get_user)?;
+    let user = fetch(&conn, &get_user)?;
     
     println!("Kullanıcı: {:?}", user);
     Ok(())
@@ -179,7 +179,7 @@ fn main() -> Result<()> {
         name: String::new(),
         email: String::new(),
     };
-    let user = conn.get(&get_user)?;
+    let user = conn.fetch(&get_user)?;
     
     println!("Kullanıcı: {:?}", user);
     Ok(())
@@ -236,7 +236,7 @@ fn main() -> Result<()> {
         name: String::new(),
         email: String::new(),
     };
-    let user = tx.get(&param)?;
+    let user = tx.fetch(&param)?;
     
     // Transaction tamamlama
     tx.commit()?;
@@ -304,7 +304,7 @@ fn main() -> Result<()> {
 use parsql::{
     core::Queryable,
     macros::{FromRow, Queryable, SqlParams},
-    sqlite::{FromRow, SqlParams, get},
+    sqlite::{FromRow, SqlParams, fetch},
 };
 use rusqlite::{types::ToSql, Row};
 
@@ -334,7 +334,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Kullanımı
     let get_user = GetUser::new(1);
-    let get_result = get(&conn, get_user)?;
+    let get_result = fetch(&conn, get_user)?;
     
     println!("Kullanıcı: {:?}", get_result);
     Ok(())
@@ -521,7 +521,7 @@ Bu, SQLite için oluşturulan tüm sorguları konsola yazdıracaktır.
 SQLite işlemleri sırasında oluşabilecek hataları yakalamak ve işlemek için Rust'ın `Result` mekanizmasını kullanın:
 
 ```rust
-match get(&conn, get_user) {
+match fetch(&conn, get_user) {
     Ok(user) => println!("Kullanıcı bulundu: {:?}", user),
     Err(e) => eprintln!("Hata oluştu: {}", e),
 }

@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use parsql_deadpool_postgres::macros::{Deletable, Insertable, Queryable, Updateable, FromRow as DeriveFromRow, SqlParams as DeriveSqlParams, UpdateParams as DeriveUpdateParams};
-use parsql_deadpool_postgres::{SqlQuery, SqlParams, UpdateParams, FromRow};
+use parsql::macros::{Deletable, Insertable, Queryable, Updateable, FromRow as DeriveFromRow, SqlParams as DeriveSqlParams, UpdateParams as DeriveUpdateParams};
+use parsql::deadpool_postgres::{SqlQuery, SqlParams, UpdateParams, FromRow};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::{types::ToSql, Row, Error};
 

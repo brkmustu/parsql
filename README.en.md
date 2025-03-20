@@ -121,8 +121,8 @@ The following extension methods are available for both Pool and Transaction obje
 - `insert(entity)` - Inserts a record
 - `update(entity)` - Updates a record
 - `delete(entity)` - Deletes a record
-- `get(params)` - Retrieves a single record
-- `get_all(params)` - Retrieves multiple records
+- `fetch(params)` - Retrieves a single record
+- `fetch_all(params)` - Retrieves multiple records
 - `select(entity, to_model)` - Retrieves a single record with a custom transformer function
 - `select_all(entity, to_model)` - Retrieves multiple records with a custom transformer function
 
@@ -209,7 +209,7 @@ This will print all executed SQL queries to the console.
 
 ```rust
 use parsql::{
-    sqlite::{get, insert},
+    sqlite::{fetch, insert},
     macros::{Queryable, Insertable, FromRow, SqlParams},
 };
 use rusqlite::Connection;
@@ -254,7 +254,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Inserted record ID: {}", id);
     
     let get_user = GetUser::new(id);
-    let user = get(&conn, get_user)?;
+    let user = fetch(&conn, get_user)?;
     println!("User: {:?}", user);
     
     Ok(())
@@ -373,3 +373,46 @@ Supported attributes:
 - `order_by`: SQL ORDER BY statement
 - `limit`: SQL LIMIT statement
 - `offset`: SQL OFFSET statement
+
+### Reading Data (Fetch)
+
+```rust
+use parsql::{
+    core::Queryable,
+    macros::{FromRow, Queryable, SqlParams},
+    postgres::{FromRow, SqlParams, fetch},
+};
+use postgres::{types::ToSql, Row};
+
+#[derive(Queryable, FromRow, SqlParams, Debug)]
+#[table("users")]
+#[where_clause("id = $")]
+pub struct GetUser {
+    pub id: i64,
+    pub name: String,
+    pub email: String,
+    pub state: i16,
+}
+
+impl GetUser {
+    pub fn new(id: i64) -> Self {
+        Self {
+            id,
+            name: Default::default(),
+            email: Default::default(),
+            state: Default::default(),
+        }
+    }
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut client = Client::connect("database.db", NoTls)?;
+    
+    // Usage
+    let get_user = GetUser::new(1);
+    let get_result = fetch(&mut client, &get_user)?;
+    
+    println!("User: {:?}", get_result);
+    Ok(())
+}
+```

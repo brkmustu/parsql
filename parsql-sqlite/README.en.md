@@ -7,7 +7,7 @@ SQLite integration crate for parsql. This package provides synchronous APIs that
 - Synchronous SQLite operations
 - Automatic SQL query generation
 - Secure parameter management
-- Generic CRUD operations (get, insert, update)
+- Generic CRUD operations (fetch, insert, update)
 - Conversion of database rows to structs
 - Automatic protection against SQL Injection attacks
 - Transaction support
@@ -42,7 +42,7 @@ let query = UserQuery {
 
 // Generated query: "SELECT * FROM users WHERE username = ? AND status = ?"
 // Parameters are safely sent as: [user_input, 1]
-let user = get(&conn, query)?;
+let user = fetch(&conn, &query)?;
 ```
 
 ## Installation
@@ -66,8 +66,8 @@ parsql-macros = "0.3.2"
 
 parsql-sqlite offers two different approaches for working with SQLite databases:
 
-1. Function-based approach (`get`, `insert`, `update`, etc.)
-2. Extension method approach (`conn.get()`, `conn.insert()`, etc.) - `CrudOps` trait
+1. Function-based approach (`fetch`, `insert`, `update`, etc.)
+2. Extension method approach (`conn.fetch()`, `conn.insert()`, etc.) - `CrudOps` trait
 
 ### Establishing a Connection
 
@@ -98,7 +98,7 @@ fn main() -> Result<()> {
 
 ```rust
 use rusqlite::{Connection, Result};
-use parsql::sqlite::{get, insert};
+use parsql::sqlite::{fetch, insert};
 use parsql::macros::{Insertable, SqlParams, Queryable, FromRow};
 
 #[derive(Insertable, SqlParams)]
@@ -133,7 +133,7 @@ fn main() -> Result<()> {
         name: String::new(),
         email: String::new(),
     };
-    let user = get(&conn, &get_user)?;
+    let user = fetch(&conn, &get_user)?;
     
     println!("User: {:?}", user);
     Ok(())
@@ -179,7 +179,7 @@ fn main() -> Result<()> {
         name: String::new(),
         email: String::new(),
     };
-    let user = conn.get(&get_user)?;
+    let user = conn.fetch(&get_user)?;
     
     println!("User: {:?}", user);
     Ok(())
@@ -236,7 +236,7 @@ fn main() -> Result<()> {
         name: String::new(),
         email: String::new(),
     };
-    let user = tx.get(&param)?;
+    let user = tx.fetch(&param)?;
     
     // Commit the transaction
     tx.commit()?;
@@ -304,7 +304,7 @@ fn main() -> Result<()> {
 use parsql::{
     core::Queryable,
     macros::{FromRow, Queryable, SqlParams},
-    sqlite::{FromRow, SqlParams, get},
+    sqlite::{FromRow, SqlParams, fetch},
 };
 use rusqlite::{types::ToSql, Row};
 
@@ -334,7 +334,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Usage
     let get_user = GetUser::new(1);
-    let get_result = get(&conn, get_user)?;
+    let get_result = fetch(&conn, get_user)?;
     
     println!("User: {:?}", get_result);
     Ok(())
@@ -521,7 +521,7 @@ This will print all queries generated for SQLite to the console.
 Use Rust's `Result` mechanism to catch and handle errors that may occur during SQLite operations:
 
 ```rust
-match get(&conn, get_user) {
+match fetch(&conn, get_user) {
     Ok(user) => println!("User found: {:?}", user),
     Err(e) => eprintln!("Error occurred: {}", e),
 }

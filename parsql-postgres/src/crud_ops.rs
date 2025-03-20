@@ -40,13 +40,13 @@ use crate::{SqlQuery, SqlParams, UpdateParams, FromRow};
 ///     };
 ///     let rows_affected = client.insert(insert_user)?;
 ///     
-///     // Extension method for get
+///     // Extension method for fetch
 ///     let get_user = GetUser {
 ///         id: 1,
 ///         name: String::new(),
 ///         email: String::new(),
 ///     };
-///     let user = client.get(&get_user)?;
+///     let user = client.fetch(&get_user)?;
 ///     
 ///     println!("User: {:?}", user);
 ///     Ok(())
@@ -87,7 +87,7 @@ pub trait CrudOps {
     /// 
     /// # Returns
     /// * `Result<T, Error>` - On success, returns the retrieved record; on failure, returns Error
-    fn get<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error>;
+    fn fetch<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error>;
 
     /// Retrieves multiple records from the PostgreSQL database.
     /// 
@@ -96,7 +96,7 @@ pub trait CrudOps {
     /// 
     /// # Returns
     /// * `Result<Vec<T>, Error>` - On success, returns a vector of records; on failure, returns Error
-    fn get_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error>;
+    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error>;
 
     /// Executes a custom query and transforms the result using the provided function.
     /// 
@@ -139,12 +139,12 @@ impl CrudOps for Client {
         delete(self, entity)
     }
 
-    fn get<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error> {
-        get(self, entity)
+    fn fetch<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error> {
+        fetch(self, entity)
     }
 
-    fn get_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error> {
-        get_all(self, entity)
+    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error> {
+        fetch_all(self, entity)
     }
 
     fn select<T, F, R>(&mut self, entity: &T, to_model: F) -> Result<R, Error>
@@ -402,254 +402,89 @@ pub fn delete<T: SqlQuery + SqlParams>(
     }
 }
 
-/// # get
+/// # fetch
 /// 
 /// Retrieves a single record from the database.
 /// 
 /// ## Parameters
 /// - `client`: Database connection client
-/// - `params`: Query parameter object (must implement SqlQuery, FromRow, and SqlParams traits)
+/// - `params`: Query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
 /// 
 /// ## Return Value
-/// - `Result<T, Error>`: On success, returns the found record; on failure, returns Error
+/// - `Result<T, Error>`: On success, returns the retrieved record; on failure, returns Error
 /// 
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
 /// ```rust,no_run
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]  // Required macros
-/// #[table("table_name")]                           // Table name to query
-/// #[where_clause("id = $")]                        // Query condition
-/// pub struct MyEntity {
-///     pub id: i32,                                 // Field used in the query condition
-///     pub field1: String,                          // Fields to be populated from the result set
-///     pub field2: i32,
-///     // ...
-/// }
-/// 
-/// // A factory method is also useful
-/// impl MyEntity {
-///     pub fn new(id: i32) -> Self {
-///         Self {
-///             id,
-///             field1: String::default(),
-///             field2: 0,
-///             // ...
-///         }
-///     }
+/// #[derive(Queryable, FromRow, SqlParams)]  // Required macros
+/// #[table("table_name")]                    // Table name to query
+/// #[where_clause("id = $1")]                // WHERE clause with parameter placeholders
+/// struct GetUser {
+///     id: i32,                              // Parameter for the WHERE clause
+///     name: String,                         // Field to retrieve
+///     email: String,                        // Field to retrieve
 /// }
 /// ```
-/// 
-/// - `Queryable`: Automatically generates SQL SELECT statements
-/// - `SqlParams`: Automatically generates SQL parameters
-/// - `FromRow`: Enables conversion from database row to struct object
-/// - `#[table("table_name")]`: Specifies the table name for the query
-/// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
-/// 
-/// ## Example Usage
-/// ```rust,no_run
-/// use postgres::{Client, NoTls, Error};
-/// use parsql::postgres::get;
-/// 
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]
-/// #[table("users")]
-/// #[where_clause("id = $")]
-/// pub struct GetUser {
-///     pub id: i32,
-///     pub name: String,
-///     pub email: String,
-///     pub state: i16,
-/// }
-/// 
-/// impl GetUser {
-///     pub fn new(id: i32) -> Self {
-///         Self {
-///             id,
-///             name: String::default(),
-///             email: String::default(),
-///             state: 0,
-///         }
-///     }
-/// }
-///
-/// fn main() -> Result<(), Error> {
-///     let mut client = Client::connect(
-///         "host=localhost user=postgres dbname=test",
-///         NoTls,
-///     )?;
-///
-///     let get_user = GetUser::new(1);
-///     let get_result = get(&mut client, &get_user)?;
-///     
-///     println!("Get result: {:?}", get_result);
-///     Ok(())
-/// }
-/// ```
-pub fn get<T: SqlQuery + FromRow + SqlParams>(
+pub fn fetch<T: SqlQuery + FromRow + SqlParams>(
     client: &mut Client,
     params: &T,
 ) -> Result<T, Error> {
     let sql = T::query();
+    
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
-    
-    let params = params.params();
-    match client.query_one(&sql, &params) {
-        Ok(_row) => T::from_row(&_row),
-        Err(e) => Err(e),
-    }
+
+    let query_params = params.params();
+    let row = client.query_one(&sql, &query_params)?;
+    T::from_row(&row)
 }
 
-/// # get_all
+/// # fetch_all
 /// 
 /// Retrieves multiple records from the database.
 /// 
 /// ## Parameters
 /// - `client`: Database connection client
-/// - `params`: Query parameter object (must implement SqlQuery, FromRow, and SqlParams traits)
+/// - `params`: Query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
 /// 
 /// ## Return Value
-/// - `Result<Vec<T>, Error>`: On success, returns the list of found records; on failure, returns Error
+/// - `Result<Vec<T>, Error>`: On success, returns a vector of records; on failure, returns Error
 /// 
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
 /// 
 /// ```rust,no_run
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]  // Required macros
-/// #[table("table_name")]                           // Table name to query
-/// #[select("field1, field2, COUNT(*) as count")]   // Custom SELECT statement (optional)
-/// #[join("INNER JOIN other_table ON ...")]         // JOIN statements (optional)
-/// #[where_clause("status > $")]                    // Query condition
-/// #[group_by("field1, field2")]                    // GROUP BY statement (optional)
-/// #[having("COUNT(*) > 0")]                        // HAVING statement (optional)
-/// #[order_by("count DESC")]                        // ORDER BY statement (optional)
-/// pub struct MyEntity {
-///     pub status: i32,                             // Field used in the query condition
-///     pub field1: String,                          // Fields to be populated from the result set
-///     pub field2: i32,
-///     pub count: i64,                              // Calculated value
-///     // ...
-/// }
-/// 
-/// impl MyEntity {
-///     pub fn new(status: i32) -> Self {
-///         Self {
-///             status,
-///             field1: String::default(),
-///             field2: 0,
-///             count: 0,
-///             // ...
-///         }
-///     }
+/// #[derive(Queryable, FromRow, SqlParams)]  // Required macros
+/// #[table("users")]                         // Table name to query
+/// #[where_clause("active = $1")]            // WHERE clause with parameter placeholders
+/// struct GetUsers {
+///     active: bool,                         // Parameter for the WHERE clause
+///     id: i32,                              // Field to retrieve
+///     name: String,                         // Field to retrieve
+///     email: String,                        // Field to retrieve
 /// }
 /// ```
-/// 
-/// - `Queryable`: Automatically generates SQL SELECT statements
-/// - `SqlParams`: Automatically generates SQL parameters
-/// - `FromRow`: Enables conversion from database row to struct object
-/// - `#[table("table_name")]`: Specifies the table name for the query
-/// - `#[select("...")]`: Creates a custom SELECT statement (if omitted, all fields will be selected)
-/// - `#[join("...")]`: Specifies JOIN statements (can be used multiple times)
-/// - `#[where_clause("...")]`: Specifies the query condition (`$` will be replaced with parameter value)
-/// - `#[group_by("...")]`: Specifies the GROUP BY statement
-/// - `#[having("...")]`: Specifies the HAVING statement
-/// - `#[order_by("...")]`: Specifies the ORDER BY statement
-/// 
-/// ## Example Usage
-/// ```rust,no_run
-/// use postgres::{Client, NoTls, Error};
-/// use parsql::postgres::get_all;
-/// 
-/// // Simple query example
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]
-/// #[table("users")]
-/// #[where_clause("email = $")]
-/// pub struct GetAllUsers {
-///     pub id: i32,
-///     pub name: String,
-///     pub email: String,
-///     pub state: i16,
-/// }
-///
-/// // Complex JOIN example
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]
-/// #[table("users")]
-/// #[select("users.id, users.name, users.email, users.state as user_state, posts.id as post_id, posts.content, posts.state as post_state, comments.content as comment")]
-/// #[join("INNER JOIN posts ON users.id = posts.user_id")]
-/// #[join("LEFT JOIN comments ON posts.id = comments.post_id")]
-/// #[where_clause("users.id = $")]
-/// pub struct SelectUserWithPosts {
-///     pub id: i32,
-///     pub name: String,
-///     pub email: String,
-///     pub user_state: i16,
-///     pub post_id: i32,
-///     pub content: String,
-///     pub post_state: i16,
-///     pub comment: Option<String>,
-/// }
-///
-/// // GROUP BY and ORDER BY example
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]
-/// #[table("users")]
-/// #[select("users.state, COUNT(*) as user_count")]
-/// #[where_clause("state > $")]
-/// #[group_by("users.state")]
-/// #[order_by("user_count DESC")]
-/// pub struct UserStateStats {
-///     pub state: i16,
-///     pub user_count: i64,
-/// }
-///
-/// // HAVING filter example
-/// #[derive(Queryable, SqlParams, FromRow, Debug)]
-/// #[table("users")]
-/// #[select("users.state, COUNT(*) as user_count")]
-/// #[where_clause("state > $")]
-/// #[group_by("users.state")]
-/// #[having("COUNT(*) > 1")]
-/// #[order_by("user_count DESC")]
-/// pub struct UserStateStatsFiltered {
-///     pub state: i16,
-///     pub user_count: i64,
-/// }
-///
-/// fn main() -> Result<(), Error> {
-///     let mut client = Client::connect(
-///         "host=localhost user=postgres dbname=test",
-///         NoTls,
-///     )?;
-///
-///     // Example usage
-///     let select_user_with_posts = SelectUserWithPosts::new(1);
-///     let get_user_with_posts = get_all(&mut client, &select_user_with_posts)?;
-///     
-///     println!("Get user with posts: {:?}", get_user_with_posts);
-///     
-///     // Other examples
-///     let user_state_stats = get_all(&mut client, &UserStateStats::new(0))?;
-///     println!("User state stats: {:?}", user_state_stats);
-///     
-///     let user_state_stats_filtered = get_all(&mut client, &UserStateStatsFiltered::new(0))?;
-///     println!("User state stats (filtered with HAVING): {:?}", user_state_stats_filtered);
-///     Ok(())
-/// }
-/// ```
-pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
+pub fn fetch_all<T: SqlQuery + FromRow + SqlParams>(
     client: &mut Client,
     params: &T,
 ) -> Result<Vec<T>, Error> {
     let sql = T::query();
+    
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
-    let params = params.params();
-    let rows = client.query(&sql, &params)?;
+
+    let query_params = params.params();
+    let rows = client.query(&sql, &query_params)?;
     
-    rows.iter()
-        .map(|row| T::from_row(row))
-        .collect::<Result<Vec<_>, _>>()
+    let mut results = Vec::with_capacity(rows.len());
+    for row in &rows {
+        results.push(T::from_row(row)?);
+    }
+    
+    Ok(results)
 }
 
 /// # get_by_query
@@ -907,4 +742,38 @@ where
     rows.iter()
         .map(|row| to_model(row))
         .collect::<Result<Vec<_>, _>>()
+}
+
+// Geriye dönük uyumluluk için eski get fonksiyonunu koruyalım
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `fetch`. Please use `fetch` function instead."
+)]
+/// # get
+/// 
+/// Retrieves a single record from the database.
+/// 
+/// This function is deprecated. Please use `fetch` instead.
+pub fn get<T: SqlQuery + FromRow + SqlParams>(
+    client: &mut Client,
+    params: &T,
+) -> Result<T, Error> {
+    fetch(client, params)
+}
+
+// Geriye dönük uyumluluk için eski get_all fonksiyonunu koruyalım
+#[deprecated(
+    since = "0.2.0",
+    note = "Renamed to `fetch_all`. Please use `fetch_all` function instead."
+)]
+/// # get_all
+/// 
+/// Retrieves multiple records from the database.
+/// 
+/// This function is deprecated. Please use `fetch_all` instead.
+pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
+    client: &mut Client,
+    params: &T,
+) -> Result<Vec<T>, Error> {
+    fetch_all(client, params)
 }

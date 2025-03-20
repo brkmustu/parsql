@@ -121,8 +121,8 @@ Hem Pool hem de Transaction nesneleri için şu extension metodları kullanılab
 - `insert(entity)` - Kayıt ekler
 - `update(entity)` - Kayıt günceller
 - `delete(entity)` - Kayıt siler
-- `get(params)` - Tek bir kayıt getirir
-- `get_all(params)` - Birden fazla kayıt getirir
+- `fetch(params)` - Tek bir kayıt getirir
+- `fetch_all(params)` - Birden fazla kayıt getirir
 - `select(entity, to_model)` - Özel dönüştürücü fonksiyon ile tek kayıt getirir
 - `select_all(entity, to_model)` - Özel dönüştürücü fonksiyon ile çoklu kayıt getirir
 
@@ -209,7 +209,7 @@ Bu, çalıştırılan tüm SQL sorgularını konsola yazdıracaktır.
 
 ```rust
 use parsql::{
-    sqlite::{get, insert},
+    sqlite::{fetch, insert},
     macros::{Queryable, Insertable, FromRow, SqlParams},
 };
 use rusqlite::Connection;
@@ -254,7 +254,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Eklenen kayıt ID: {}", id);
     
     let get_user = GetUser::new(id);
-    let user = get(&conn, get_user)?;
+    let user = fetch(&conn, get_user)?;
     println!("Kullanıcı: {:?}", user);
     
     Ok(())

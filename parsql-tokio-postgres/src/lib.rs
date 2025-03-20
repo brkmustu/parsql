@@ -70,7 +70,7 @@
 //!     
 //!     // Get the user back
 //!     let get_user = GetUser::new(id as i32);
-//!     let user = client.get(get_user).await?;
+//!     let user = client.fetch(get_user).await?;
 //!     
 //!     println!("User: {:?}", user);
 //!     Ok(())
@@ -95,7 +95,7 @@
 //!     let client = pool.get().await?;
 //!     
 //!     // Use extension methods
-//!     let users = client.get_all(active_users_query).await?;
+//!     let users = client.fetch_all(active_users_query).await?;
 //!     
 //!     Ok(())
 //! }
@@ -161,10 +161,17 @@ pub use crate::crud_ops::{
     insert,
     update,
     delete,
-    get,
-    get_all,
+    fetch,
+    fetch_all,
     select,
     select_all
+};
+
+// Geriye dönük uyumluluk için eski fonksiyonları deprecated olarak dışa aktaralım
+#[allow(deprecated)]
+pub use crate::crud_ops::{
+    get,
+    get_all
 };
 
 pub use parsql_macros as macros;
@@ -177,10 +184,12 @@ pub use parsql_macros as macros;
 /// - `tx_insert`: Insert a record within a transaction
 /// - `tx_update`: Update records within a transaction
 /// - `tx_delete`: Delete records within a transaction
-/// - `tx_get`: Get a single record within a transaction
-/// - `tx_get_all`: Get multiple records within a transaction
+/// - `tx_fetch`: Get a single record within a transaction  
+/// - `tx_fetch_all`: Get multiple records within a transaction
 /// - `tx_select`: Execute a custom query and transform a single result within a transaction
 /// - `tx_select_all`: Execute a custom query and transform multiple results within a transaction
+/// - `tx_get`: (Deprecated) Get a single record within a transaction
+/// - `tx_get_all`: (Deprecated) Get multiple records within a transaction
 pub use transaction_ops as transactional;
 
 /// Trait for generating SQL queries.
