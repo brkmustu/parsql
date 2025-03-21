@@ -41,16 +41,16 @@ and select the feature you need:
 
 ```toml
 # For SQLite
-parsql-macros = { version = "0.3.2", features = ["sqlite"] }
+parsql-macros = { version = "0.3.7", features = ["sqlite"] }
 
 # For PostgreSQL
-parsql-macros = { version = "0.3.2", features = ["postgres"] }
+parsql-macros = { version = "0.3.7", features = ["postgres"] }
 
 # For Tokio PostgreSQL
-parsql-macros = { version = "0.3.2", features = ["tokio-postgres"] }
+parsql-macros = { version = "0.3.7", features = ["tokio-postgres"] }
 
 # For Deadpool PostgreSQL
-parsql-macros = { version = "0.3.2", features = ["deadpool-postgres"] }
+parsql-macros = { version = "0.3.7", features = ["deadpool-postgres"] }
 ```
 
 ## Security Features

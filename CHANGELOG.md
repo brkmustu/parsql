@@ -36,6 +36,7 @@ Bu değişiklikler, parsql ekosistemindeki tüm paketlerin tutarlı bir isimlend
 ### 📚 Documentation
 
 - Versiyon ile ilgili dökümantasyon güncellemesi.
+- V0.3.7 için CHANGELOG.md düzenlemesi.
 
 ### ⚙️ Miscellaneous Tasks
 

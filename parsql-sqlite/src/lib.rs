@@ -154,6 +154,23 @@
 //!     Ok(())
 //! }
 //! ```
+//!
+//! ## Installation
+//!
+//! Add to your Cargo.toml file as follows:
+//!
+//! ```toml
+//! [dependencies]
+//! parsql = { version = "0.3.7", features = ["sqlite"] }
+//! ```
+//!
+//! or if you want to use this package directly:
+//!
+//! ```toml
+//! [dependencies]
+//! parsql-sqlite = "0.3.7"
+//! parsql-macros = "0.3.7"
+//! ```
 
 pub mod crud_ops;
 pub mod transactional_ops;

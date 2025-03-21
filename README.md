@@ -48,27 +48,32 @@ Parsql aşağıdaki veritabanı sistemlerini desteklemektedir:
 
 ## Kurulum
 
-Cargo.toml dosyanıza şu şekilde ekleyin:
+Cargo.toml içinde aşağıdaki şekilde tanımlama yapın:
 
 ```toml
 [dependencies]
-parsql = "0.3.6"
+parsql = { version = "0.3.7", features = ["sqlite"] }
 ```
 
-ve özellik seçimini yapın:
+veya PostgreSQL için:
 
 ```toml
-# SQLite için
-parsql = { version = "0.3.6", features = ["sqlite"] }
+[dependencies]
+parsql = { version = "0.3.7", features = ["postgres"] }
+```
 
-# PostgreSQL için
-parsql = { version = "0.3.6", features = ["postgres"] }
+veya Tokio PostgreSQL için:
 
-# Tokio PostgreSQL için 
-parsql = { version = "0.3.6", features = ["tokio-postgres"] }
+```toml
+[dependencies]
+parsql = { version = "0.3.7", features = ["tokio-postgres"] }
+```
 
-# Deadpool PostgreSQL için
-parsql = { version = "0.3.6", features = ["deadpool-postgres"] }
+veya Deadpool PostgreSQL için:
+
+```toml
+[dependencies]
+parsql = { version = "0.3.7", features = ["deadpool-postgres"] }
 ```
 
 ## Temel Özellikler

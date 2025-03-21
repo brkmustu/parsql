@@ -51,15 +51,15 @@ Cargo.toml dosyanıza şu şekilde ekleyin:
 
 ```toml
 [dependencies]
-parsql = { version = "0.3.2", features = ["sqlite"] }
+parsql = { version = "0.3.7", features = ["sqlite"] }
 ```
 
 veya doğrudan bu paketi kullanmak isterseniz:
 
 ```toml
 [dependencies]
-parsql-sqlite = "0.3.2"
-parsql-macros = "0.3.2"
+parsql-sqlite = "0.3.7"
+parsql-macros = "0.3.7"
 ```
 
 ## Kullanım

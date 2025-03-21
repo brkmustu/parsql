@@ -51,15 +51,15 @@ Add to your Cargo.toml file as follows:
 
 ```toml
 [dependencies]
-parsql = { version = "0.3.2", features = ["sqlite"] }
+parsql = { version = "0.3.7", features = ["sqlite"] }
 ```
 
 or if you want to use this package directly:
 
 ```toml
 [dependencies]
-parsql-sqlite = "0.3.2"
-parsql-macros = "0.3.2"
+parsql-sqlite = "0.3.7"
+parsql-macros = "0.3.7"
 ```
 
 ## Usage
@@ -529,4 +529,4 @@ match fetch(&conn, get_user) {
 
 ## Complete Example Project
 
-For a complete example project, see the [examples/sqlite](../examples/sqlite) directory in the main parsql repository. 
+For a complete example project, see the [examples/sqlite](../examples/sqlite) directory in the main parsql repository.

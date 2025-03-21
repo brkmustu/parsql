@@ -98,6 +98,42 @@ pub trait CrudOps {
     /// * `Result<Vec<T>, Error>` - On success, returns a vector of records; on failure, returns Error
     fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<Vec<T>, Error>;
 
+    /// Retrieves a single record from the SQLite database.
+    /// 
+    /// # Deprecated
+    /// This function has been renamed to `fetch`. Please use `fetch` instead.
+    /// 
+    /// # Arguments
+    /// * `entity` - Data object containing query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
+    /// 
+    /// # Returns
+    /// * `Result<T, Error>` - On success, returns the retrieved record; on failure, returns Error
+    #[deprecated(
+        since = "0.3.7",
+        note = "Renamed to `fetch`. Please use `fetch` function instead."
+    )]
+    fn get<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<T, Error> {
+        self.fetch(entity)
+    }
+
+    /// Retrieves multiple records from the SQLite database.
+    /// 
+    /// # Deprecated
+    /// This function has been renamed to `fetch_all`. Please use `fetch_all` instead.
+    /// 
+    /// # Arguments
+    /// * `entity` - Data object containing query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
+    /// 
+    /// # Returns
+    /// * `Result<Vec<T>, Error>` - A vector of retrieved records or an error
+    #[deprecated(
+        since = "0.3.7",
+        note = "Renamed to `fetch_all`. Please use `fetch_all` function instead."
+    )]
+    fn get_all<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<Vec<T>, Error> {
+        self.fetch_all(entity)
+    }
+
     /// Executes a custom query and transforms the result using the provided function.
     /// 
     /// # Arguments
@@ -580,6 +616,54 @@ pub fn fetch_all<T: SqlQuery + FromRow + SqlParams>(
     conn.fetch_all(entity)
 }
 
+/// # get
+/// 
+/// Retrieves a single record from the database based on a specific condition.
+/// 
+/// # Deprecated
+/// This function has been renamed to `fetch`. Please use `fetch` instead.
+/// 
+/// ## Parameters
+/// - `conn`: SQLite database connection
+/// - `entity`: Query parameter object (must implement SqlQuery, FromRow, and SqlParams traits)
+/// 
+/// ## Return Value
+/// - `Result<T, Error>`: On success, returns the queried record; on failure, returns Error
+#[deprecated(
+    since = "0.3.7",
+    note = "Renamed to `fetch`. Please use `fetch` function instead."
+)]
+pub fn get<T: SqlQuery + FromRow + SqlParams>(
+    conn: &rusqlite::Connection,
+    entity: &T,
+) -> Result<T, Error> {
+    fetch(conn, entity)
+}
+
+/// # get_all
+/// 
+/// Retrieves multiple records from the database based on a specific condition.
+/// 
+/// # Deprecated
+/// This function has been renamed to `fetch_all`. Please use `fetch_all` instead.
+/// 
+/// ## Parameters
+/// - `conn`: SQLite database connection
+/// - `entity`: Query parameter object (must implement SqlQuery, FromRow, and SqlParams traits)
+/// 
+/// ## Return Value
+/// - `Result<Vec<T>, Error>`: On success, returns a vector of records; on failure, returns Error
+#[deprecated(
+    since = "0.3.7",
+    note = "Renamed to `fetch_all`. Please use `fetch_all` function instead."
+)]
+pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
+    conn: &rusqlite::Connection,
+    entity: &T,
+) -> Result<Vec<T>, Error> {
+    fetch_all(conn, entity)
+}
+
 /// # select
 /// 
 /// Executes a custom SELECT query and maps the result to a model using a provided mapping function.
@@ -634,7 +718,7 @@ pub fn fetch_all<T: SqlQuery + FromRow + SqlParams>(
 ///     };
 /// 
 ///     // Execute query with custom mapping
-///     let user = select(&mut conn, get_query, to_user)?;
+///     let user = select(&conn, &get_query, to_user)?;
 ///     println!("User: {:?}", user);
 ///     Ok(())
 /// }
@@ -707,7 +791,7 @@ where
 ///     };
 /// 
 ///     // Execute query with custom mapping
-///     let users = select_all(&mut conn, get_query, to_user)?;
+///     let users = select_all(&conn, &get_query, to_user)?;
 ///     println!("Active users: {:?}", users);
 ///     Ok(())
 /// }

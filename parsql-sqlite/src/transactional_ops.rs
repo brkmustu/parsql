@@ -685,7 +685,7 @@ pub fn tx_fetch_all<'a, T: SqlQuery + FromRow + SqlParams>(
 /// # Returns
 /// * `Result<(Transaction<'_>, T), Error>` - Transaction and the retrieved record or an error
 #[deprecated(
-    since = "0.3.6",
+    since = "0.3.7",
     note = "Renamed to `tx_fetch`. Please use `tx_fetch` function instead."
 )]
 pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
@@ -707,7 +707,7 @@ pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
 /// # Returns
 /// * `Result<(Transaction<'_>, Vec<T>), Error>` - Transaction and a vector of retrieved records or an error
 #[deprecated(
-    since = "0.3.6",
+    since = "0.3.7",
     note = "Renamed to `tx_fetch_all`. Please use `tx_fetch_all` function instead."
 )]
 pub fn tx_get_all<'a, T: SqlQuery + FromRow + SqlParams>(

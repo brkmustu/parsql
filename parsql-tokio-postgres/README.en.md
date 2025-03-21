@@ -56,10 +56,10 @@ Add to your Cargo.toml file as follows:
 ```toml
 [dependencies]
 # For Tokio PostgreSQL
-parsql = { version = "0.3.2", features = ["tokio-postgres"] }
+parsql = { version = "0.3.7", features = ["tokio-postgres"] }
 
-# or for using with deadpool connection pool
-parsql = { version = "0.3.2", features = ["deadpool-postgres"] }
+# For Deadpool PostgreSQL
+parsql = { version = "0.3.7", features = ["deadpool-postgres"] }
 ```
 
 or if you want to use this package directly:

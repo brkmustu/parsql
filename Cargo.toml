@@ -18,12 +18,12 @@ edition = "2021"
 categories = ["database", "asynchronous"]
 keywords = ["database", "async", "postgres", "sqlite"]
 repository = "https://github.com/yazdostum-nettr/parsql"
-version = "0.3.6"
+version = "0.3.7"
 license = "MIT OR Apache-2.0"
 
 [package]
 name = "parsql"
-version = "0.3.6"
+version = "0.3.7"
 description = "Deneyimsel bir sql yardımcı küfesidir. UYARI: bu bir ORM aracı değildir. Amaç sql yazımı ve kullanımında basit cümlecikler için kolaylık sağlamaktır."
 license.workspace = true
 edition.workspace = true
@@ -47,18 +47,18 @@ deadpool-postgres = [
 ]
 
 [workspace.dependencies]
-parsql-macros = { path = "parsql-macros", version = "0.3.6" }
-parsql-sqlite = { path = "parsql-sqlite", version = "0.3.6" }
-parsql-postgres = { path = "parsql-postgres", version = "0.3.6" }
-parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.3.6" }
-parsql-deadpool-postgres = { path = "parsql-deadpool-postgres", version = "0.3.6" }
+parsql-macros = { path = "parsql-macros", version = "0.3.7" }
+parsql-sqlite = { path = "parsql-sqlite", version = "0.3.7" }
+parsql-postgres = { path = "parsql-postgres", version = "0.3.7" }
+parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.3.7" }
+parsql-deadpool-postgres = { path = "parsql-deadpool-postgres", version = "0.3.7" }
 
 [dependencies]
-parsql-macros = { workspace = true, version = "0.3.6" }
-parsql-sqlite = { workspace = true, version = "0.3.6", optional = true }
-parsql-postgres = { workspace = true, version = "0.3.6", optional = true }
-parsql-tokio-postgres = { workspace = true, version = "0.3.6", optional = true }
-parsql-deadpool-postgres = { workspace = true, version = "0.3.6", optional = true }
+parsql-macros = { workspace = true, version = "0.3.7" }
+parsql-sqlite = { workspace = true, version = "0.3.7", optional = true }
+parsql-postgres = { workspace = true, version = "0.3.7", optional = true }
+parsql-tokio-postgres = { workspace = true, version = "0.3.7", optional = true }
+parsql-deadpool-postgres = { workspace = true, version = "0.3.7", optional = true }
 
 [workspace.lints.clippy]
 cast_possible_truncation = 'deny'

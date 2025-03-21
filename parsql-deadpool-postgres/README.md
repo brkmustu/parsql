@@ -56,8 +56,8 @@ Cargo.toml dosyanıza şu şekilde ekleyin:
 ```toml
 [dependencies]
 # Deadpool PostgreSQL için
-parsql-deadpool-postgres = "0.3.2"
-parsql-macros = "0.3.2"
+parsql-deadpool-postgres = "0.3.7"
+parsql-macros = "0.3.7"
 deadpool-postgres = "0.14"
 tokio-postgres = "0.7"
 tokio = { version = "1", features = ["full"] }

@@ -52,7 +52,7 @@ Add to your Cargo.toml file as follows:
 
 ```toml
 [dependencies]
-parsql = { version = "0.3.2", features = ["postgres"] }
+parsql = { version = "0.3.7", features = ["postgres"] }
 ```
 
 or if you want to use this package directly:

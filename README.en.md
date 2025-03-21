@@ -48,27 +48,32 @@ Parsql supports the following database systems:
 
 ## Installation
 
-Add to your Cargo.toml file as follows:
+Add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-parsql = "0.3.6"
+parsql = { version = "0.3.7", features = ["sqlite"] }
 ```
 
-and select the feature you need:
+or for PostgreSQL:
 
 ```toml
-# For SQLite
-parsql = { version = "0.3.6", features = ["sqlite"] }
+[dependencies]
+parsql = { version = "0.3.7", features = ["postgres"] }
+```
 
-# For PostgreSQL
-parsql = { version = "0.3.6", features = ["postgres"] }
+or for Tokio PostgreSQL:
 
-# For Tokio PostgreSQL
-parsql = { version = "0.3.6", features = ["tokio-postgres"] }
+```toml
+[dependencies]
+parsql = { version = "0.3.7", features = ["tokio-postgres"] }
+```
 
-# For Deadpool PostgreSQL
-parsql = { version = "0.3.6", features = ["deadpool-postgres"] }
+or for Deadpool PostgreSQL:
+
+```toml
+[dependencies]
+parsql = { version = "0.3.7", features = ["deadpool-postgres"] }
 ```
 
 ## Core Features
