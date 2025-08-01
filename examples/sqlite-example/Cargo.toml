@@ -1,0 +1,18 @@
+[package]
+name = "sqlite-example"
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+categories.workspace = true
+keywords.workspace = true
+repository.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+parsql = { path = "../..", features = ["sqlite"] }
+rusqlite = "0.37"
+anyhow = "1.0"
+
+[lints]
+workspace = true

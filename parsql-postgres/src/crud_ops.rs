@@ -1,36 +1,49 @@
-use postgres::{types::{FromSql, ToSql}, Client, Error, Row};
-use crate::traits::{SqlQuery, SqlParams, FromRow, UpdateParams, CrudOps};
-
+use crate::traits::{CrudOps, FromRow, SqlCommand, SqlParams, SqlQuery, UpdateParams};
+use postgres::{
+    types::{FromSql, ToSql},
+    Client, Error, Row,
+};
 
 // CrudOps trait implementasyonu postgres::Client için
 impl CrudOps for Client {
-    fn insert<T: SqlQuery + SqlParams, P:for<'a> FromSql<'a> + Send + Sync>(&mut self, entity: T) -> Result<P, Error> {
+    fn insert<T: SqlCommand + SqlParams, P: for<'a> FromSql<'a> + Send + Sync>(
+        &mut self,
+        entity: T,
+    ) -> Result<P, Error> {
         insert::<T, P>(self, entity)
     }
 
-    fn update<T: SqlQuery + UpdateParams>(&mut self, entity: T) -> Result<u64, Error> {
+    fn update<T: SqlCommand + UpdateParams>(&mut self, entity: T) -> Result<u64, Error> {
         update(self, entity)
     }
 
-    fn delete<T: SqlQuery + SqlParams>(&mut self, entity: T) -> Result<u64, Error> {
+    fn delete<T: SqlCommand + SqlParams>(&mut self, entity: T) -> Result<u64, Error> {
         delete(self, entity)
     }
 
-    fn fetch<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error> {
-        fetch(self, entity)
+    fn fetch<P, R>(&mut self, params: &P) -> Result<R, Error>
+    where
+        P: SqlQuery<R> + SqlParams,
+        R: FromRow,
+    {
+        fetch(self, params)
     }
 
-    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error> {
-        fetch_all(self, entity)
+    fn fetch_all<P, R>(&mut self, params: &P) -> Result<Vec<R>, Error>
+    where
+        P: SqlQuery<R> + SqlParams,
+        R: FromRow,
+    {
+        fetch_all(self, params)
     }
 
     fn select<T, F, R>(&mut self, entity: &T, to_model: F) -> Result<R, Error>
     where
-        T: SqlQuery + SqlParams,
+        T: SqlQuery<T> + SqlParams,
         F: FnOnce(&Row) -> Result<R, Error>,
     {
         let sql = T::query();
-        
+
         if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
             println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
         }
@@ -42,36 +55,36 @@ impl CrudOps for Client {
 
     fn select_all<T, F, R>(&mut self, entity: &T, to_model: F) -> Result<Vec<R>, Error>
     where
-        T: SqlQuery + SqlParams,
+        T: SqlQuery<T> + SqlParams,
         F: FnMut(&Row) -> Result<R, Error>,
     {
         let sql = T::query();
-        
+
         if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
             println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
         }
 
         let params = entity.params();
         let rows = self.query(&sql, &params)?;
-        
+
         rows.iter().map(to_model).collect()
     }
 }
 
 /// # insert
-/// 
+///
 /// Inserts a new record into the database.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
 /// - `entity`: Data object to be inserted (must implement SqlQuery and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<u64, Error>`: On success, returns the number of inserted records; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Insertable, SqlParams)]  // Required macros
 /// #[table("table_name")]            // Table name to insert into
@@ -81,16 +94,16 @@ impl CrudOps for Client {
 ///     // ...
 /// }
 /// ```
-/// 
+///
 /// - `Insertable`: Automatically generates SQL INSERT statements
 /// - `SqlParams`: Automatically generates SQL parameters
 /// - `#[table("table_name")]`: Specifies the table name for the insertion
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::insert;
-/// 
+///
 /// #[derive(Insertable, SqlParams)]
 /// #[table("users")]
 /// pub struct InsertUser {
@@ -116,7 +129,10 @@ impl CrudOps for Client {
 ///     Ok(())
 /// }
 /// ```
-pub fn insert<T: SqlQuery + SqlParams, P:for<'a> FromSql<'a> + Send + Sync>(client: &mut Client, entity: T) -> Result<P, Error> {
+pub fn insert<T: SqlCommand + SqlParams, P: for<'a> FromSql<'a> + Send + Sync>(
+    client: &mut Client,
+    entity: T,
+) -> Result<P, Error> {
     let sql = T::query();
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
@@ -128,19 +144,19 @@ pub fn insert<T: SqlQuery + SqlParams, P:for<'a> FromSql<'a> + Send + Sync>(clie
 }
 
 /// # update
-/// 
+///
 /// Updates an existing record in the database.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
-/// - `entity`: Data object containing the update information (must implement SqlQuery and UpdateParams traits)
-/// 
+/// - `entity`: Data object containing the update information (must implement SqlCommand and UpdateParams traits)
+///
 /// ## Return Value
 /// - `Result<u64, Error>`: On success, returns the number of updated records; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Updateable, UpdateParams)]  // Required macros
 /// #[table("table_name")]               // Table name to update
@@ -153,18 +169,18 @@ pub fn insert<T: SqlQuery + SqlParams, P:for<'a> FromSql<'a> + Send + Sync>(clie
 ///     // ...
 /// }
 /// ```
-/// 
+///
 /// - `Updateable`: Automatically generates SQL UPDATE statements
 /// - `UpdateParams`: Automatically generates update parameters
 /// - `#[table("table_name")]`: Specifies the table name for the update
 /// - `#[update("field1, field2")]`: Specifies which fields should be updated (if omitted, all fields will be updated)
 /// - `#[where_clause("id = $")]`: Specifies the update condition (`$` will be replaced with parameter value)
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::update;
-/// 
+///
 /// #[derive(Updateable, UpdateParams)]
 /// #[table("users")]
 /// #[update("name, email")]
@@ -194,7 +210,7 @@ pub fn insert<T: SqlQuery + SqlParams, P:for<'a> FromSql<'a> + Send + Sync>(clie
 ///     Ok(())
 /// }
 /// ```
-pub fn update<T: SqlQuery + UpdateParams>(
+pub fn update<T: SqlCommand + UpdateParams>(
     client: &mut postgres::Client,
     entity: T,
 ) -> Result<u64, Error> {
@@ -204,26 +220,23 @@ pub fn update<T: SqlQuery + UpdateParams>(
     }
 
     let params = entity.params();
-    match client.execute(&sql, &params) {
-        Ok(rows_affected) => Ok(rows_affected),
-        Err(e) => Err(e),
-    }
+    client.execute(&sql, &params)
 }
 
 /// # delete
-/// 
+///
 /// Deletes a record from the database.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
-/// - `entity`: Data object containing the deletion information (must implement SqlQuery and SqlParams traits)
-/// 
+/// - `entity`: Data object containing the deletion information (must implement SqlCommand and SqlParams traits)
+///
 /// ## Return Value
 /// - `Result<u64, Error>`: On success, returns the number of deleted records; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Deletable, SqlParams)]   // Required macros
 /// #[table("table_name")]             // Table name to delete from
@@ -233,24 +246,24 @@ pub fn update<T: SqlQuery + UpdateParams>(
 ///     // Other fields can be added, but typically only condition fields are necessary
 /// }
 /// ```
-/// 
+///
 /// - `Deletable`: Automatically generates SQL DELETE statements
 /// - `SqlParams`: Automatically generates SQL parameters
 /// - `#[table("table_name")]`: Specifies the table name for the deletion
 /// - `#[where_clause("id = $")]`: Specifies the delete condition (`$` will be replaced with parameter value)
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::delete;
-/// 
+///
 /// #[derive(Deletable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
 /// pub struct DeleteUser {
 ///     pub id: i32,
 /// }
-/// 
+///
 /// fn main() -> Result<(), Error> {
 ///     let mut client = Client::connect(
 ///         "host=localhost user=postgres dbname=test",
@@ -264,7 +277,7 @@ pub fn update<T: SqlQuery + UpdateParams>(
 ///     Ok(())
 /// }
 /// ```
-pub fn delete<T: SqlQuery + SqlParams>(
+pub fn delete<T: SqlCommand + SqlParams>(
     client: &mut postgres::Client,
     entity: T,
 ) -> Result<u64, Error> {
@@ -274,26 +287,23 @@ pub fn delete<T: SqlQuery + SqlParams>(
     }
 
     let params = entity.params();
-    match client.execute(&sql, &params) {
-        Ok(rows_affected) => Ok(rows_affected),
-        Err(e) => Err(e),
-    }
+    client.execute(&sql, &params)
 }
 
 /// # fetch
-/// 
+///
 /// Retrieves a single record from the database.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
 /// - `params`: Query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<T, Error>`: On success, returns the retrieved record; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Queryable, FromRow, SqlParams)]  // Required macros
 /// #[table("table_name")]                    // Table name to query
@@ -304,35 +314,35 @@ pub fn delete<T: SqlQuery + SqlParams>(
 ///     email: String,                        // Field to retrieve
 /// }
 /// ```
-pub fn fetch<T: SqlQuery + FromRow + SqlParams>(
-    client: &mut Client,
-    params: &T,
-) -> Result<T, Error> {
-    let sql = T::query();
-    
+pub fn fetch<P, R>(client: &mut Client, params: &P) -> Result<R, Error>
+where
+    P: SqlQuery<R> + SqlParams,
+    R: FromRow,
+{
+    let sql = P::query();
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
 
     let query_params = params.params();
     let row = client.query_one(&sql, &query_params)?;
-    T::from_row(&row)
+    R::from_row(&row)
 }
 
 /// # fetch_all
-/// 
+///
 /// Retrieves multiple records from the database.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
 /// - `params`: Query parameters (must implement SqlQuery, FromRow, and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<Vec<T>, Error>`: On success, returns a vector of records; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Queryable, FromRow, SqlParams)]  // Required macros
 /// #[table("users")]                         // Table name to query
@@ -344,44 +354,44 @@ pub fn fetch<T: SqlQuery + FromRow + SqlParams>(
 ///     email: String,                        // Field to retrieve
 /// }
 /// ```
-pub fn fetch_all<T: SqlQuery + FromRow + SqlParams>(
-    client: &mut Client,
-    params: &T,
-) -> Result<Vec<T>, Error> {
-    let sql = T::query();
-    
+pub fn fetch_all<P, R>(client: &mut Client, params: &P) -> Result<Vec<R>, Error>
+where
+    P: SqlQuery<R> + SqlParams,
+    R: FromRow,
+{
+    let sql = P::query();
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
     }
 
     let query_params = params.params();
     let rows = client.query(&sql, &query_params)?;
-    
+
     let mut results = Vec::with_capacity(rows.len());
-    for row in &rows {
-        results.push(T::from_row(row)?);
+    for row in rows {
+        results.push(R::from_row(&row)?);
     }
-    
+
     Ok(results)
 }
 
 /// # get_by_query
-/// 
+///
 /// Retrieves multiple records from the database using a custom SQL query.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
 /// - `query`: Custom SQL query string
 /// - `params`: Array of query parameters
-/// 
+///
 /// ## Return Value
 /// - `Result<Vec<T>, Error>`: On success, returns the list of found records; on failure, returns Error
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::get_by_query;
-/// 
+///
 /// #[derive(FromRow, Debug)]
 /// pub struct UserStats {
 ///     pub state: i16,
@@ -418,21 +428,21 @@ pub fn get_by_query<T: FromRow>(
 }
 
 /// # select
-/// 
+///
 /// Retrieves a single record from the database using a custom transformation function.
 /// This is useful when you want to use a custom transformation function instead of the FromRow trait.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
 /// - `entity`: Query parameter object (must implement SqlQuery and SqlParams traits)
 /// - `to_model`: Function to convert a Row object to the target object type
-/// 
+///
 /// ## Return Value
 /// - `Result<T, Error>`: On success, returns the transformed object; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Queryable, SqlParams)]          // Required macros (FromRow is not needed)
 /// #[table("table_name")]                   // Table name to query
@@ -441,7 +451,7 @@ pub fn get_by_query<T: FromRow>(
 ///     pub id: i32,                         // Field used in the query condition
 ///     // Other fields can be added if necessary for the query condition
 /// }
-/// 
+///
 /// // A separate struct can be used for the return value
 /// pub struct MyResultEntity {
 ///     pub id: i32,
@@ -449,30 +459,30 @@ pub fn get_by_query<T: FromRow>(
 ///     pub count: i64,
 /// }
 /// ```
-/// 
+///
 /// - `Queryable`: Automatically generates SQL SELECT statements
 /// - `SqlParams`: Automatically generates SQL parameters
 /// - `#[table("table_name")]`: Specifies the table name for the query
 /// - `#[where_clause("id = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::select;
-/// 
+///
 /// #[derive(Queryable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
 /// pub struct UserQuery {
 ///     pub id: i32,
 /// }
-/// 
+///
 /// impl UserQuery {
 ///     pub fn new(id: i32) -> Self {
 ///         Self { id }
 ///     }
 /// }
-/// 
+///
 /// // Different return structure
 /// pub struct User {
 ///     pub id: i32,
@@ -497,7 +507,7 @@ pub fn get_by_query<T: FromRow>(
 ///     Ok(())
 /// }
 /// ```
-pub fn select<T: SqlQuery + SqlParams, F>(
+pub fn select<T: SqlQuery<T> + SqlParams, F>(
     client: &mut postgres::Client,
     entity: T,
     to_model: F,
@@ -519,21 +529,21 @@ where
 }
 
 /// # select_all
-/// 
+///
 /// Retrieves multiple records from the database using a custom transformation function.
 /// This is useful when you want to use a custom transformation function instead of the FromRow trait.
-/// 
+///
 /// ## Parameters
 /// - `client`: Database connection client
 /// - `entity`: Query parameter object (must implement SqlQuery and SqlParams traits)
 /// - `to_model`: Function to convert a Row object to the target object type
-/// 
+///
 /// ## Return Value
 /// - `Result<Vec<T>, Error>`: On success, returns the list of transformed objects; on failure, returns Error
-/// 
+///
 /// ## Struct Definition
 /// Structs used with this function should be annotated with the following derive macros:
-/// 
+///
 /// ```rust,no_run
 /// #[derive(Queryable, SqlParams)]          // Required macros (FromRow is not needed)
 /// #[table("table_name")]                   // Table name to query
@@ -543,7 +553,7 @@ where
 ///     pub active: bool,                    // Field used in the query condition
 ///     // Other fields can be added if necessary for the query condition
 /// }
-/// 
+///
 /// // A separate struct can be used for the return value
 /// pub struct MyResultEntity {
 ///     pub id: i32,
@@ -551,31 +561,31 @@ where
 ///     pub count: i64,
 /// }
 /// ```
-/// 
+///
 /// - `Queryable`: Automatically generates SQL SELECT statements
 /// - `SqlParams`: Automatically generates SQL parameters
 /// - `#[table("table_name")]`: Specifies the table name for the query
 /// - `#[select("...")]`: Creates a custom SELECT statement (if omitted, all fields will be selected)
 /// - `#[where_clause("active = $")]`: Specifies the query condition (`$` will be replaced with parameter value)
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::select_all;
-/// 
+///
 /// #[derive(Queryable, SqlParams)]
 /// #[table("users")]
 /// #[select("id, name, email")]
 /// pub struct UsersQuery {
 ///     // Can be empty for a parameterless query
 /// }
-/// 
+///
 /// impl UsersQuery {
 ///     pub fn new() -> Self {
 ///         Self {}
 ///     }
 /// }
-/// 
+///
 /// // Different return structure
 /// pub struct User {
 ///     pub id: i32,
@@ -600,7 +610,7 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn select_all<T: SqlQuery + SqlParams, F>(
+pub fn select_all<T: SqlQuery<T> + SqlParams, F>(
     client: &mut postgres::Client,
     entity: T,
     to_model: F,
@@ -628,11 +638,11 @@ where
     note = "Renamed to `fetch`. Please use `fetch` function instead."
 )]
 /// # get
-/// 
+///
 /// Retrieves a single record from the database.
-/// 
+///
 /// This function is deprecated. Please use `fetch` instead.
-pub fn get<T: SqlQuery + FromRow + SqlParams>(
+pub fn get<T: SqlQuery<T> + FromRow + SqlParams>(
     client: &mut Client,
     params: &T,
 ) -> Result<T, Error> {
@@ -645,11 +655,11 @@ pub fn get<T: SqlQuery + FromRow + SqlParams>(
     note = "Renamed to `fetch_all`. Please use `fetch_all` function instead."
 )]
 /// # get_all
-/// 
+///
 /// Retrieves multiple records from the database.
-/// 
+///
 /// This function is deprecated. Please use `fetch_all` instead.
-pub fn get_all<T: SqlQuery + FromRow + SqlParams>(
+pub fn get_all<T: SqlQuery<T> + FromRow + SqlParams>(
     client: &mut Client,
     params: &T,
 ) -> Result<Vec<T>, Error> {

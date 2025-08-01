@@ -23,6 +23,8 @@ pub use crud_ops::{
     insert,
     update,
     delete,
+    fetch,
+    fetch_all,
     get,
     get_all,
     select,

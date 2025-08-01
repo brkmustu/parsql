@@ -1,5 +1,5 @@
-use crate::traits::{CrudOps, FromRow, SqlParams, SqlQuery, UpdateParams};
-use postgres::types::FromSql;
+use crate::traits::{CrudOps, FromRow, SqlCommand, SqlParams, SqlQuery, UpdateParams};
+use postgres::types::{FromSql, ToSql};
 use std::sync::OnceLock;
 use tokio_postgres::{Client, Error, Row, Transaction};
 
@@ -7,150 +7,57 @@ use tokio_postgres::{Client, Error, Row, Transaction};
 impl CrudOps for Client {
     async fn insert<T, P: for<'a> FromSql<'a> + Send + Sync>(&self, entity: T) -> Result<P, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static,
+        T: SqlCommand + SqlParams + Send + Sync + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let params = entity.params();
-        let row = self.query_one(&sql, &params).await?;
-        row.try_get::<_, P>(0)
+        insert(self, entity).await
     }
 
     async fn update<T>(&self, entity: T) -> Result<bool, Error>
     where
-        T: SqlQuery + UpdateParams + Send + Sync + 'static,
+        T: SqlCommand + UpdateParams + Send + Sync + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let params = entity.params();
-        let result = self.execute(&sql, &params).await?;
-        Ok(result > 0)
+        update(self, entity).await
     }
 
     async fn delete<T>(&self, entity: T) -> Result<u64, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static,
+        T: SqlCommand + SqlParams + Send + Sync + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let params = entity.params();
-        self.execute(&sql, &params).await
+        delete(self, entity).await
     }
 
-    async fn fetch<T>(&self, params: T) -> Result<T, Error>
+    async fn fetch<P, R>(&self, params: P) -> Result<R, Error>
     where
-        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+        P: SqlQuery<R> + SqlParams + Send + Sync + 'static,
+        R: FromRow + Send + Sync + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let query_params = params.params();
-        let row = self.query_one(&sql, &query_params).await?;
-        T::from_row(&row)
+        fetch(self, params).await
     }
 
-    async fn fetch_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    async fn fetch_all<P, R>(&self, params: P) -> Result<Vec<R>, Error>
     where
-        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+        P: SqlQuery<R> + SqlParams + Send + Sync + 'static,
+        R: FromRow + Send + Sync + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let query_params = params.params();
-        let rows = self.query(&sql, &query_params).await?;
-
-        let mut results = Vec::with_capacity(rows.len());
-        for row in rows {
-            results.push(T::from_row(&row)?);
-        }
-
-        Ok(results)
+        fetch_all(self, params).await
     }
 
     async fn select<T, F, R>(&self, entity: T, to_model: F) -> Result<R, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static,
+        T: SqlQuery<T> + SqlParams + Send + Sync + 'static,
         F: Fn(&Row) -> Result<R, Error> + Send + Sync + 'static,
         R: Send + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let params = entity.params();
-        let row = self.query_one(&sql, &params).await?;
-        to_model(&row)
+        select(self, entity, to_model).await
     }
 
     async fn select_all<T, F, R>(&self, entity: T, to_model: F) -> Result<Vec<R>, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static,
+        T: SqlQuery<T> + SqlParams + Send + Sync + 'static,
         F: Fn(&Row) -> R + Send + Sync + 'static,
         R: Send + 'static,
     {
-        let sql = T::query();
-
-        static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
-        let is_trace_enabled =
-            *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
-
-        if is_trace_enabled {
-            println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
-        }
-
-        let params = entity.params();
-        let rows = self.query(&sql, &params).await?;
-
-        let mut results = Vec::with_capacity(rows.len());
-        for row in rows {
-            results.push(to_model(&row));
-        }
-
-        Ok(results)
+        select_all(self, entity, to_model).await
     }
 }
 
@@ -169,9 +76,21 @@ pub async fn insert<T, P: for<'a> FromSql<'a> + Send + Sync>(
     entity: T,
 ) -> Result<P, Error>
 where
-    T: SqlQuery + SqlParams + Send + Sync + 'static,
+    T: SqlCommand + SqlParams + Send + Sync + 'static,
 {
-    client.insert::<T, P>(entity).await
+    let sql = T::query();
+
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let row = client.query_one(&sql, &params).await?;
+    row.try_get::<_, P>(0)
 }
 
 /// # update
@@ -186,9 +105,21 @@ where
 /// - `Result<bool, Error>`: On success, returns true; on failure, returns Error
 pub async fn update<T>(client: &Client, entity: T) -> Result<bool, Error>
 where
-    T: SqlQuery + UpdateParams + Send + Sync + 'static,
+    T: SqlCommand + UpdateParams + Send + Sync + 'static,
 {
-    client.update(entity).await
+    let sql = T::query();
+
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let result = client.execute(&sql, &params).await?;
+    Ok(result > 0)
 }
 
 /// # delete
@@ -203,9 +134,20 @@ where
 /// - `Result<u64, Error>`: On success, returns the number of deleted records; on failure, returns Error
 pub async fn delete<T>(client: &Client, entity: T) -> Result<u64, Error>
 where
-    T: SqlQuery + SqlParams + Send + Sync + 'static,
+    T: SqlCommand + SqlParams + Send + Sync + 'static,
 {
-    client.delete(entity).await
+    let sql = T::query();
+
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    client.execute(&sql, &params).await
 }
 
 /// # fetch
@@ -218,11 +160,24 @@ where
 ///
 /// ## Return Value
 /// - `Result<T, Error>`: On success, returns the retrieved record as a struct; on failure, returns Error
-pub async fn fetch<T>(client: &Client, params: T) -> Result<T, Error>
+pub async fn fetch<P, R>(client: &Client, params: P) -> Result<R, Error>
 where
-    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    P: SqlQuery<R> + SqlParams + Send + Sync + 'static,
+    R: FromRow + Send + Sync + 'static,
 {
-    client.fetch(params).await
+    let sql = P::query();
+
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let query_params = params.params();
+    let row = client.query_one(&sql, &query_params).await?;
+    R::from_row(&row)
 }
 
 /// # fetch_all
@@ -235,11 +190,30 @@ where
 ///
 /// ## Return Value
 /// - `Result<Vec<T>, Error>`: On success, returns the list of found records; on failure, returns Error
-pub async fn fetch_all<T>(client: &Client, params: T) -> Result<Vec<T>, Error>
+pub async fn fetch_all<P, R>(client: &Client, params: P) -> Result<Vec<R>, Error>
 where
-    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    P: SqlQuery<R> + SqlParams + Send + Sync + 'static,
+    R: FromRow + Send + Sync + 'static,
 {
-    client.fetch_all(params).await
+    let sql = P::query();
+
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let query_params = params.params();
+    let rows = client.query(&sql, &query_params).await?;
+
+    let mut results = Vec::with_capacity(rows.len());
+    for row in rows {
+        results.push(R::from_row(&row)?);
+    }
+
+    Ok(results)
 }
 
 /// # select
@@ -256,11 +230,23 @@ where
 /// - `Result<R, Error>`: On success, returns the transformed object; on failure, returns Error
 pub async fn select<T, F, R>(client: &Client, entity: T, to_model: F) -> Result<R, Error>
 where
-    T: SqlQuery + SqlParams + Send + Sync + 'static,
+    T: SqlQuery<T> + SqlParams + Send + Sync + 'static,
     F: Fn(&Row) -> Result<R, Error> + Send + Sync + 'static,
     R: Send + 'static,
 {
-    client.select(entity, to_model).await
+    let sql = T::query();
+
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let row = client.query_one(&sql, &params).await?;
+    to_model(&row)
 }
 
 /// # select_all
@@ -277,14 +263,30 @@ where
 /// - `Result<Vec<R>, Error>`: On success, returns the list of transformed objects; on failure, returns Error
 pub async fn select_all<T, F, R>(client: &Client, entity: T, to_model: F) -> Result<Vec<R>, Error>
 where
-    T: SqlQuery + SqlParams + Send + Sync + 'static,
+    T: SqlQuery<T> + SqlParams + Send + Sync + 'static,
     F: Fn(&Row) -> R + Send + Sync + 'static,
     R: Send + 'static,
 {
-    client.select_all(entity, to_model).await
-}
+    let sql = T::query();
 
-// DEPRECATED FUNCTIONS - For backward compatibility
+    static TRACE_ENABLED: OnceLock<bool> = OnceLock::new();
+    let is_trace_enabled =
+        *TRACE_ENABLED.get_or_init(|| std::env::var("PARSQL_TRACE").unwrap_or_default() == "1");
+
+    if is_trace_enabled {
+        println!("[PARSQL-TOKIO-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let rows = client.query(&sql, &params).await?;
+
+    let mut results = Vec::with_capacity(rows.len());
+    for row in rows {
+        results.push(to_model(&row));
+    }
+
+    Ok(results)
+}
 
 /// # get
 ///
@@ -305,7 +307,7 @@ where
 )]
 pub async fn get<T>(client: &Client, params: T) -> Result<T, Error>
 where
-    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    T: SqlQuery<T> + FromRow + SqlParams + Send + Sync + 'static,
 {
     fetch(client, params).await
 }
@@ -329,7 +331,7 @@ where
 )]
 pub async fn get_all<T>(client: &Client, params: T) -> Result<Vec<T>, Error>
 where
-    T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+    T: SqlQuery<T> + FromRow + SqlParams + Send + Sync + 'static,
 {
     fetch_all(client, params).await
 }

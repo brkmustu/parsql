@@ -1,27 +1,27 @@
 // use parsql_core::{Deleteable, Insertable, Queryable, Updateable};
-use deadpool_postgres::{Transaction, Client};
+use deadpool_postgres::{Client, Transaction};
 use tokio_postgres::Error;
 // Makrolar sadece dokümantasyon için kullanılıyor, gerçek kodda SqlQuery kullanılmalı
 // use parsql_macros::{Insertable, Updateable};
 
-use crate::traits::{SqlQuery, SqlParams, FromRow};
+use crate::traits::{CrudOps, FromRow, SqlCommand, SqlParams, SqlQuery, UpdateParams};
 
 /// # begin
-/// 
+///
 /// Starts a new database transaction from a pool client.
-/// 
+///
 /// ## Parameters
 /// - `client`: Pool client to start the transaction from
-/// 
+///
 /// ## Return Value
 /// - `Result<Transaction<'_>, Error>`: On success, returns the new transaction
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use tokio_postgres::{NoTls, Error};
 /// use deadpool_postgres::{Config, Runtime};
 /// use parsql::deadpool_postgres::transactional::begin;
-/// 
+///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let mut cfg = Config::new();
@@ -42,30 +42,30 @@ use crate::traits::{SqlQuery, SqlParams, FromRow};
 /// ```
 pub async fn begin(client: &mut Client) -> Result<Transaction<'_>, Error> {
     let tx = client.transaction().await?;
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Begin Transaction");
     }
-    
+
     Ok(tx)
 }
 
 /// # begin_from_pool
-/// 
+///
 /// Starts a new database transaction directly from a connection pool.
-/// 
+///
 /// ## Parameters
 /// - `pool`: Connection pool to start the transaction from
-/// 
+///
 /// ## Return Value
 /// - `Result<(Client, Transaction<'_>), Error>`: On success, returns the client and transaction
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use tokio_postgres::{NoTls, Error};
 /// use deadpool_postgres::{Config, Runtime};
 /// use parsql::deadpool_postgres::transactional::begin_from_pool;
-/// 
+///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Error> {
 ///     let mut cfg = Config::new();
@@ -91,22 +91,22 @@ pub async fn begin(client: &mut Client) -> Result<Transaction<'_>, Error> {
 // Bunun yerine client'ı manuel olarak alıp, üzerinde transaction başlatmak daha uygun
 
 /// # tx_update
-/// 
+///
 /// Updates a record within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `entity`: Data object containing the update information (must implement Updateable and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, u64), Error>`: On success, returns the transaction and number of updated records
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use tokio_postgres::{NoTls, Error};
 /// use deadpool_postgres::{Config, Runtime};
 /// use parsql::deadpool_postgres::transactional::tx_update;
-/// 
+///
 /// #[derive(Updateable, UpdateParams)]
 /// #[table("users")]
 /// #[update("name, email")]
@@ -141,12 +141,12 @@ pub async fn begin(client: &mut Client) -> Result<Transaction<'_>, Error> {
 ///     Ok(())
 /// }
 /// ```
-pub async fn tx_update<T: SqlQuery + SqlParams>(
+pub async fn tx_update<T: SqlCommand + SqlParams>(
     transaction: Transaction<'_>,
     entity: T,
 ) -> Result<(Transaction<'_>, u64), Error> {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
@@ -157,22 +157,22 @@ pub async fn tx_update<T: SqlQuery + SqlParams>(
 }
 
 /// # tx_insert
-/// 
+///
 /// Inserts a record within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `entity`: Data object to be inserted (must implement Insertable and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, u64), Error>`: On success, returns the transaction and number of inserted records
-/// 
+///
 /// ## Example Usage
 /// ```rust,no_run
 /// use tokio_postgres::{NoTls, Error};
 /// use deadpool_postgres::{Config, Runtime};
 /// use parsql::deadpool_postgres::transactional::tx_insert;
-/// 
+///
 /// #[derive(Insertable, SqlParams)]
 /// #[table("users")]
 /// pub struct InsertUser {
@@ -205,12 +205,12 @@ pub async fn tx_update<T: SqlQuery + SqlParams>(
 ///     Ok(())
 /// }
 /// ```
-pub async fn tx_insert<T: SqlQuery + SqlParams>(
+pub async fn tx_insert<T: SqlCommand + SqlParams>(
     transaction: Transaction<'_>,
     entity: T,
 ) -> Result<(Transaction<'_>, u64), Error> {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
@@ -221,21 +221,21 @@ pub async fn tx_insert<T: SqlQuery + SqlParams>(
 }
 
 /// # tx_delete
-/// 
+///
 /// Deletes a record within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `entity`: Data object identifying the record to delete (must implement Deletable and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, u64), Error>`: On success, returns the transaction and number of deleted records
-pub async fn tx_delete<T: SqlQuery + SqlParams>(
+pub async fn tx_delete<T: SqlCommand + SqlParams>(
     transaction: Transaction<'_>,
     entity: T,
 ) -> Result<(Transaction<'_>, u64), Error> {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
@@ -246,13 +246,13 @@ pub async fn tx_delete<T: SqlQuery + SqlParams>(
 }
 
 /// # tx_get
-/// 
+///
 /// Retrieves a single record within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `params`: Query parameters (must implement SqlQuery, FromRow and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, T), Error>`: On success, returns the transaction and the retrieved record
 pub async fn tx_get<'a, T>(
@@ -260,10 +260,10 @@ pub async fn tx_get<'a, T>(
     params: &T,
 ) -> Result<(Transaction<'a>, T), Error>
 where
-    T: SqlQuery + FromRow + SqlParams,
+    T: SqlQuery<T> + FromRow + SqlParams,
 {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
@@ -271,18 +271,18 @@ where
     let query_params = params.params();
     let row = transaction.query_one(&sql, &query_params).await?;
     let result = T::from_row(&row)?;
-    
+
     Ok((transaction, result))
 }
 
 /// # tx_get_all
-/// 
+///
 /// Retrieves multiple records within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `params`: Query parameters (must implement SqlQuery, FromRow and SqlParams traits)
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, Vec<T>), Error>`: On success, returns the transaction and the retrieved records
 pub async fn tx_get_all<'a, T>(
@@ -290,34 +290,34 @@ pub async fn tx_get_all<'a, T>(
     params: &T,
 ) -> Result<(Transaction<'a>, Vec<T>), Error>
 where
-    T: SqlQuery + FromRow + SqlParams,
+    T: SqlQuery<T> + FromRow + SqlParams,
 {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
 
     let query_params = params.params();
     let rows = transaction.query(&sql, &query_params).await?;
-    
+
     let mut results = Vec::with_capacity(rows.len());
     for row in rows {
         results.push(T::from_row(&row)?);
     }
-    
+
     Ok((transaction, results))
 }
 
 /// # tx_select
-/// 
+///
 /// Retrieves a single record using a custom transformation function within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `entity`: Query parameters (must implement SqlQuery and SqlParams traits)
 /// - `to_model`: Function to transform the row into the desired type
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, R), Error>`: On success, returns the transaction and the transformed record
 pub async fn tx_select<'a, T, R, F>(
@@ -326,11 +326,11 @@ pub async fn tx_select<'a, T, R, F>(
     to_model: F,
 ) -> Result<(Transaction<'a>, R), Error>
 where
-    T: SqlQuery + SqlParams,
+    T: SqlQuery<T> + SqlParams,
     F: FnOnce(&tokio_postgres::Row) -> Result<R, Error>,
 {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
@@ -338,19 +338,19 @@ where
     let params = entity.params();
     let row = transaction.query_one(&sql, &params).await?;
     let result = to_model(&row)?;
-    
+
     Ok((transaction, result))
 }
 
 /// # tx_select_all
-/// 
+///
 /// Retrieves multiple records using a custom transformation function within a transaction.
-/// 
+///
 /// ## Parameters
 /// - `transaction`: Active transaction object
 /// - `entity`: Query parameters (must implement SqlQuery and SqlParams traits)
 /// - `to_model`: Function to transform each row into the desired type
-/// 
+///
 /// ## Return Value
 /// - `Result<(Transaction<'_>, Vec<R>), Error>`: On success, returns the transaction and the transformed records
 pub async fn tx_select_all<'a, T, R, F>(
@@ -359,22 +359,22 @@ pub async fn tx_select_all<'a, T, R, F>(
     to_model: F,
 ) -> Result<(Transaction<'a>, Vec<R>), Error>
 where
-    T: SqlQuery + SqlParams,
+    T: SqlQuery<T> + SqlParams,
     F: Fn(&tokio_postgres::Row) -> R,
 {
     let sql = T::query();
-    
+
     if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
         println!("[PARSQL-TOKIO-POSTGRES-TX] Execute SQL: {}", sql);
     }
 
     let params = entity.params();
     let rows = transaction.query(&sql, &params).await?;
-    
+
     let mut results = Vec::with_capacity(rows.len());
     for row in rows {
         results.push(to_model(&row));
     }
-    
+
     Ok((transaction, results))
 }

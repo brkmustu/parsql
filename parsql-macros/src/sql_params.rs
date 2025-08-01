@@ -52,12 +52,16 @@ pub(crate) fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
 
     // WHERE cümlesindeki alan adlarını bulma
     if let Some(clause) = &where_clause {
-        let where_fields: Vec<_> = fields
-            .iter()
-            .filter(|&f| clause.contains(f))
-            .cloned()
-            .collect();
-        param_fields.extend(where_fields);
+        // Boş where_clause durumunu kontrol et
+        if !clause.trim().is_empty() && clause != "1=1" {
+            let where_fields: Vec<_> = fields
+                .iter()
+                .filter(|&f| clause.contains(f))
+                .cloned()
+                .collect();
+            param_fields.extend(where_fields);
+        }
+        // Boş where_clause veya "1=1" durumunda parametre ekleme
     }
 
     // HAVING cümlesindeki alan adlarını bulma
@@ -70,8 +74,9 @@ pub(crate) fn derive_sql_params_impl(input: TokenStream) -> TokenStream {
         param_fields.extend(having_fields);
     }
 
-    // Eğer hiçbir cümlede parametre yoksa, tüm alanları kullan
-    if param_fields.is_empty() {
+    // where_clause yok veya boş değilse ve parametre bulunamadıysa tüm alanları kullan
+    // Ancak where_clause boşsa veya "1=1" ise parametre kullanma
+    if param_fields.is_empty() && where_clause.is_none() {
         param_fields = fields;
     }
 

@@ -52,21 +52,20 @@ Cargo.toml dosyanıza şu şekilde ekleyin:
 
 ```toml
 [dependencies]
-parsql = { version = "0.4.0", features = ["postgres"] }
+parsql = { version = "0.5.0", features = ["postgres"] }
 ```
 
 ## Kullanım
 
 parsql-postgres ile çalışmak için iki farklı yaklaşım kullanabilirsiniz:
 
-### 1. Fonksiyon Tabanlı Yaklaşım
+### Prelude Kullanımı (Önerilen)
+
+v0.5.0'dan itibaren tüm gerekli import'lar için prelude kullanabilirsiniz:
 
 ```rust
-use parsql::postgres::{
-    macros::{Insertable, SqlParams, Queryable, FromRow},
-    traits::{SqlParams, SqlQuery},
-};
-use postgres::{Client, NoTls, types::ToSql};
+use parsql::prelude::*;
+use postgres::{Client, NoTls};
 
 #[derive(Insertable, SqlParams)]
 #[table("users")]
@@ -107,17 +106,13 @@ fn main() -> Result<(), postgres::Error> {
 }
 ```
 
-### 2. Extension Metot Yaklaşımı (CrudOps Trait)
+### Extension Metot Yaklaşımı (CrudOps Trait)
 
-Bu yaklaşımda, `CrudOps` trait'i sayesinde CRUD işlemlerini doğrudan `Client` nesnesi üzerinden çağırabilirsiniz:
+Extension metodları prelude ile otomatik olarak kullanılabilir hale gelir:
 
 ```rust
-use parsql::postgres::{
-    CrudOps,
-    macros::{Insertable, SqlParams, Queryable, FromRow},
-    traits::{SqlParams, SqlQuery},
-};
-use postgres::{Client, NoTls, types::ToSql};
+use parsql::prelude::*;
+use postgres::{Client, NoTls};
 
 #[derive(Insertable, SqlParams)]
 #[table("users")]

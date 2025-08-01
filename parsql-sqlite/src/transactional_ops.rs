@@ -2,11 +2,11 @@
 //!
 //! This module provides functions for performing CRUD operations within a transaction.
 
-use rusqlite::{types::FromSql, Connection, Error, ToSql, Transaction};
-use crate::traits::{SqlParams, SqlQuery, UpdateParams, FromRow, CrudOps};
+use crate::traits::{CrudOps, FromRow, SqlCommand, SqlParams, SqlQuery, UpdateParams};
+use rusqlite::{types::FromSql, Connection, Error, Row, ToSql, Transaction};
 
-/// Implementation of CrudOps for Transaction
-impl<'conn> CrudOps for Transaction<'conn> {
+/// CrudOps trait implementasyonu Transaction<'_> için.
+impl<'a> CrudOps for Transaction<'a> {
     /// Inserts a record into the database and returns the number of rows affected.
     /// This function is an extension to the Transaction struct and is available when the CrudOps trait is in scope.
     ///
@@ -45,17 +45,20 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn insert<T: SqlQuery + SqlParams, P: for<'a> FromSql + Send + Sync>(&self, entity: T) -> Result<P, Error> {
+    fn insert<T: SqlCommand + SqlParams, P: FromSql + Send + Sync>(
+        &self,
+        entity: T,
+    ) -> Result<P, Error> {
         let sql = T::query();
-        
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
-        self.query_row(&sql, param_refs.as_slice(), |row| row.get(0))
+        let params_vec = entity.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
+        let mut stmt = self.prepare(&sql)?;
+        let mut rows = stmt.query(param_refs.as_slice())?;
+        if let Some(row) = rows.next()? {
+            row.get(0)
+        } else {
+            Err(Error::QueryReturnedNoRows)
+        }
     }
 
     /// Updates a record in the database and returns the number of rows affected.
@@ -100,16 +103,10 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn update<T: SqlQuery + UpdateParams>(&self, entity: T) -> Result<usize, Error> {
+    fn update<T: SqlCommand + UpdateParams>(&self, entity: T) -> Result<usize, Error> {
         let sql = T::query();
-        
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
+        let params_vec = entity.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
         self.execute(&sql, param_refs.as_slice())
     }
 
@@ -148,16 +145,10 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn delete<T: SqlQuery + SqlParams>(&self, entity: T) -> Result<usize, Error> {
+    fn delete<T: SqlCommand + SqlParams>(&self, entity: T) -> Result<usize, Error> {
         let sql = T::query();
-        
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
+        let params_vec = entity.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
         self.execute(&sql, param_refs.as_slice())
     }
 
@@ -203,21 +194,18 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn fetch<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<T, Error> {
-        let sql = T::query();
-        
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
-        }
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
+    fn fetch<P, R>(&self, params: &P) -> Result<R, Error>
+    where
+        P: SqlQuery<R> + SqlParams,
+        R: FromRow,
+    {
+        let sql = P::query();
+        let params_vec = params.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
         let mut stmt = self.prepare(&sql)?;
         let mut rows = stmt.query(param_refs.as_slice())?;
-        
         if let Some(row) = rows.next()? {
-            let result = T::from_row(row)?;
+            let result = R::from_row(row)?;
             Ok(result)
         } else {
             Err(Error::QueryReturnedNoRows)
@@ -266,24 +254,20 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&self, entity: &T) -> Result<Vec<T>, Error> {
-        let sql = T::query();
-        
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-SQLITE] Execute SQL: {}", sql);
-        }
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
+    fn fetch_all<P, R>(&self, params: &P) -> Result<Vec<R>, Error>
+    where
+        P: SqlQuery<R> + SqlParams,
+        R: FromRow,
+    {
+        let sql = P::query();
+        let params_vec = params.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
         let mut stmt = self.prepare(&sql)?;
-        let rows = stmt.query_map(param_refs.as_slice(), |row| T::from_row(row))?;
-        
+        let rows = stmt.query_map(param_refs.as_slice(), |row| R::from_row(row))?;
         let mut results = Vec::new();
         for row_result in rows {
             results.push(row_result?);
         }
-        
         Ok(results)
     }
 
@@ -326,19 +310,13 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn select<T: SqlQuery + SqlParams, F, R>(&self, entity: &T, to_model: F) -> Result<R, Error>
+    fn select<T: SqlQuery<T> + SqlParams, F, R>(&self, entity: &T, to_model: F) -> Result<R, Error>
     where
         F: Fn(&rusqlite::Row) -> Result<R, Error>,
     {
         let sql = T::query();
-        
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
+        let params_vec = entity.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
         let mut stmt = self.prepare(&sql)?;
         stmt.query_row(param_refs.as_slice(), to_model)
     }
@@ -384,27 +362,23 @@ impl<'conn> CrudOps for Transaction<'conn> {
     ///     Ok(())
     /// }
     /// ```
-    fn select_all<T: SqlQuery + SqlParams, F, R>(&self, entity: &T, to_model: F) -> Result<Vec<R>, Error>
+    fn select_all<T: SqlQuery<T> + SqlParams, F, R>(
+        &self,
+        entity: &T,
+        to_model: F,
+    ) -> Result<Vec<R>, Error>
     where
         F: Fn(&rusqlite::Row) -> Result<R, Error>,
     {
         let sql = T::query();
-        
-        // Debug log the SQL query
-        #[cfg(debug_assertions)]
-        println!("[SQL] {}", sql);
-        
-        let params = entity.params();
-        let param_refs: Vec<&dyn ToSql> = params.iter().map(|p| *p as &dyn ToSql).collect();
-        
+        let params_vec = entity.params();
+        let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
         let mut stmt = self.prepare(&sql)?;
         let rows = stmt.query_map(param_refs.as_slice(), to_model)?;
-        
         let mut results = Vec::new();
-        for row_result in rows {
-            results.push(row_result?);
+        for row in rows {
+            results.push(row?);
         }
-        
         Ok(results)
     }
 }
@@ -471,12 +445,11 @@ pub fn begin(conn: &Connection) -> Result<Transaction<'_>, Error> {
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_insert<'a, T: SqlQuery + SqlParams, P: for<'b> FromSql + Send + Sync>(
-    tx: Transaction<'a>,
+pub fn tx_insert<'a, T: SqlCommand + SqlParams, P: FromSql + Send + Sync>(
+    tx: &mut Transaction<'a>,
     entity: T,
-) -> Result<(Transaction<'a>, P), Error> {
-    let result = tx.insert(entity)?;
-    Ok((tx, result))
+) -> Result<P, Error> {
+    tx.insert(entity)
 }
 
 /// Updates a record in the database within a transaction.
@@ -520,7 +493,7 @@ pub fn tx_insert<'a, T: SqlQuery + SqlParams, P: for<'b> FromSql + Send + Sync>(
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_update<'a, T: SqlQuery + UpdateParams>(
+pub fn tx_update<'a, T: SqlCommand + UpdateParams>(
     tx: Transaction<'a>,
     entity: T,
 ) -> Result<(Transaction<'a>, usize), Error> {
@@ -562,7 +535,7 @@ pub fn tx_update<'a, T: SqlQuery + UpdateParams>(
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_delete<'a, T: SqlQuery + SqlParams>(
+pub fn tx_delete<'a, T: SqlCommand + SqlParams>(
     tx: Transaction<'a>,
     entity: T,
 ) -> Result<(Transaction<'a>, usize), Error> {
@@ -612,12 +585,22 @@ pub fn tx_delete<'a, T: SqlQuery + SqlParams>(
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_fetch<'a, T: SqlQuery + FromRow + SqlParams>(
-    tx: Transaction<'a>,
-    entity: &T,
-) -> Result<(Transaction<'a>, T), Error> {
-    let result = tx.fetch(entity)?;
-    Ok((tx, result))
+pub fn tx_fetch<'a, P, R>(tx: &mut Transaction<'a>, params: &P) -> Result<R, Error>
+where
+    P: SqlQuery<R> + SqlParams,
+    R: FromRow,
+{
+    let sql = P::query();
+    let params_vec = params.params();
+    let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
+    let mut stmt = tx.prepare(&sql)?;
+    let mut rows = stmt.query(param_refs.as_slice())?;
+    if let Some(row) = rows.next()? {
+        let result = R::from_row(row)?;
+        Ok(result)
+    } else {
+        Err(Error::QueryReturnedNoRows)
+    }
 }
 
 /// Fetches multiple records from the database within a transaction.
@@ -664,16 +647,25 @@ pub fn tx_fetch<'a, T: SqlQuery + FromRow + SqlParams>(
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_fetch_all<'a, T: SqlQuery + FromRow + SqlParams>(
-    tx: Transaction<'a>,
-    entity: &T,
-) -> Result<(Transaction<'a>, Vec<T>), Error> {
-    let results = tx.fetch_all(entity)?;
-    Ok((tx, results))
+pub fn tx_fetch_all<'a, P, R>(tx: &mut Transaction<'a>, params: &P) -> Result<Vec<R>, Error>
+where
+    P: SqlQuery<R> + SqlParams,
+    R: FromRow,
+{
+    let sql = P::query();
+    let params_vec = params.params();
+    let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
+    let mut stmt = tx.prepare(&sql)?;
+    let rows = stmt.query_map(param_refs.as_slice(), |row| R::from_row(row))?;
+    let mut results = Vec::new();
+    for row_result in rows {
+        results.push(row_result?);
+    }
+    Ok(results)
 }
 
 /// Gets a single record from the database within a transaction.
-/// 
+///
 /// # Deprecated
 /// This function has been renamed to `tx_fetch`. Please use `tx_fetch` instead.
 ///
@@ -682,20 +674,20 @@ pub fn tx_fetch_all<'a, T: SqlQuery + FromRow + SqlParams>(
 /// * `entity` - A struct that implements Queryable, SqlParams, and FromRow traits
 ///
 /// # Returns
-/// * `Result<(Transaction<'_>, T), Error>` - Transaction and the retrieved record or an error
+/// * `Result<T, Error>` - The retrieved record or an error
 #[deprecated(
     since = "0.3.7",
     note = "Renamed to `tx_fetch`. Please use `tx_fetch` function instead."
 )]
-pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
-    tx: Transaction<'a>,
+pub fn tx_get<'a, T: SqlQuery<T> + FromRow + SqlParams>(
+    tx: &mut Transaction<'a>,
     entity: &T,
-) -> Result<(Transaction<'a>, T), Error> {
+) -> Result<T, Error> {
     tx_fetch(tx, entity)
 }
 
 /// Gets multiple records from the database within a transaction.
-/// 
+///
 /// # Deprecated
 /// This function has been renamed to `tx_fetch_all`. Please use `tx_fetch_all` instead.
 ///
@@ -704,15 +696,15 @@ pub fn tx_get<'a, T: SqlQuery + FromRow + SqlParams>(
 /// * `entity` - A struct that implements Queryable, SqlParams, and FromRow traits
 ///
 /// # Returns
-/// * `Result<(Transaction<'_>, Vec<T>), Error>` - Transaction and a vector of retrieved records or an error
+/// * `Result<Vec<T>, Error>` - A vector of retrieved records or an error
 #[deprecated(
     since = "0.3.7",
     note = "Renamed to `tx_fetch_all`. Please use `tx_fetch_all` function instead."
 )]
-pub fn tx_get_all<'a, T: SqlQuery + FromRow + SqlParams>(
-    tx: Transaction<'a>,
+pub fn tx_get_all<'a, T: SqlQuery<T> + FromRow + SqlParams>(
+    tx: &mut Transaction<'a>,
     entity: &T,
-) -> Result<(Transaction<'a>, Vec<T>), Error> {
+) -> Result<Vec<T>, Error> {
     tx_fetch_all(tx, entity)
 }
 
@@ -759,73 +751,41 @@ pub fn tx_get_all<'a, T: SqlQuery + FromRow + SqlParams>(
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_select<'a, T, F, R>(
-    tx: Transaction<'a>,
+pub fn tx_select<'a, T: SqlQuery<T> + SqlParams, F, R>(
+    tx: &mut Transaction<'a>,
     entity: &T,
     to_model: F,
-) -> Result<(Transaction<'a>, R), Error>
+) -> Result<R, Error>
 where
-    T: SqlQuery + SqlParams,
     F: Fn(&rusqlite::Row) -> Result<R, Error>,
 {
-    let result = tx.select(entity, to_model)?;
-    Ok((tx, result))
+    let sql = T::query();
+    let params_vec = entity.params();
+    let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
+    let mut stmt = tx.prepare(&sql)?;
+    stmt.query_row(param_refs.as_slice(), to_model)
 }
 
 /// Execute a custom SELECT query within a transaction and transform all results.
 ///
 /// # Arguments
-/// * `tx` - A transaction
-/// * `entity` - Data object containing query parameters
-/// * `to_model` - Function to transform rows into values
-///
-/// # Returns
-/// * `Result<(Transaction, Vec<R>)>` - The transaction and transformed values, or an error
-///
-/// # Example
-/// ```rust,no_run
-/// use rusqlite::{Connection, Result};
-/// use parsql::sqlite::transactional;
-/// use parsql::macros::{Queryable, SqlParams};
-///
-/// #[derive(Queryable, SqlParams)]
-/// #[table("users")]
-/// #[where_clause("email LIKE ?")]
-/// struct GetUserNames {
-///     email: String,
-/// }
-///
-/// fn main() -> Result<()> {
-///     let conn = Connection::open("test.db")?;
-///     let tx = transactional::begin(&conn)?;
-///     
-///     let param = GetUserNames {
-///         email: "%example.com".to_string(),
-///     };
-///     
-///     let (tx, names): (_, Vec<String>) = transactional::tx_select_all(
-///         tx,
-///         &param,
-///         |row| row.get(0)
-///     )?;
-///     
-///     for name in names {
-///         println!("User name: {}", name);
-///     }
-///     
-///     tx.commit()?;
-///     Ok(())
-/// }
-/// ```
-pub fn tx_select_all<'a, T, F, R>(
-    tx: Transaction<'a>,
+/// * `tx`
+pub fn tx_select_all<'a, T: SqlQuery<T> + SqlParams, F, R>(
+    tx: &mut Transaction<'a>,
     entity: &T,
     to_model: F,
-) -> Result<(Transaction<'a>, Vec<R>), Error>
+) -> Result<Vec<R>, Error>
 where
-    T: SqlQuery + SqlParams,
     F: Fn(&rusqlite::Row) -> Result<R, Error>,
 {
-    let results = tx.select_all(entity, to_model)?;
-    Ok((tx, results))
-} 
+    let sql = T::query();
+    let params_vec = entity.params();
+    let param_refs: Vec<&dyn ToSql> = params_vec.iter().map(|p| *p as &dyn ToSql).collect();
+    let mut stmt = tx.prepare(&sql)?;
+    let rows = stmt.query_map(param_refs.as_slice(), to_model)?;
+    let mut results = Vec::new();
+    for row in rows {
+        results.push(row?);
+    }
+    Ok(results)
+}

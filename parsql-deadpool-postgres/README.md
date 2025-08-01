@@ -56,7 +56,7 @@ Cargo.toml dosyanıza şu şekilde ekleyin:
 ```toml
 [dependencies]
 # Deadpool PostgreSQL için
-parsql = { version = "0.4.0", features = ["deadpool-postgres"] }
+parsql = { version = "0.5.0", features = ["deadpool-postgres"] }
 deadpool-postgres = "0.14"
 tokio-postgres = "0.7"
 tokio = { version = "1", features = ["full"] }
@@ -95,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Veritabanı CRUD işlemleri için, ilgili makrolarla işaretlenmiş model struct'ları tanımlayın:
 
 ```rust
-use parsql_deadpool_postgres::macros::{Insertable, Updateable, Queryable, Deletable};
+use parsql::prelude::*;
 
 // Eklemek için model
 #[derive(Insertable)]
@@ -205,10 +205,10 @@ println!("Silinen kayıt sayısı: {}", deleted_count);
 
 ### Extension Method'lar ile Kullanım
 
-Pool nesnesi üzerinde doğrudan çalışan extension method'ları kullanmak için `CrudOps` trait'ini içe aktarın:
+Extension metodları prelude ile otomatik olarak kullanılabilir hale gelir:
 
 ```rust
-use parsql_deadpool_postgres::CrudOps;
+use parsql::prelude::*;
 
 // Extension method kullanarak ekleme
 let user = UserInsert {

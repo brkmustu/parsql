@@ -118,7 +118,7 @@ pub(crate) fn derive_updateable_impl(input: TokenStream) -> TokenStream {
     log_message(&format!("Total param count: {}", param_counter.count()));
 
     let expanded = quote! {
-        impl SqlQuery for #struct_name {
+        impl SqlCommand for #struct_name {
             fn query() -> String {
                 #safe_query.to_string()
             }

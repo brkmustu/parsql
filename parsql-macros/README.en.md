@@ -34,7 +34,7 @@ Add to your Cargo.toml file as follows:
 
 ```toml
 [dependencies]
-parsql-macros = "0.4.0"
+parsql-macros = "0.5.0"
 ```
 
 ## Security Features

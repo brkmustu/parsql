@@ -1,11 +1,13 @@
 [workspace]
 resolver = "2"
-members = [ "examples/postgres",
-    "examples/sqlite", 
-    "examples/tokio-deadpool-postgres",
-    "examples/tokio-postgres",
+members = [ 
+    "examples/deadpool-postgres-example",
+    "examples/postgres-example",
+    "examples/sqlite-example",
+    "examples/tokio-postgres-example",
+    "parsql-cli",
     "parsql-deadpool-postgres",
-    "parsql-macros",
+    "parsql-macros", "parsql-migrations",
     "parsql-postgres",
     "parsql-sqlite",
     "parsql-tokio-postgres",
@@ -18,12 +20,12 @@ edition = "2021"
 categories = ["database", "asynchronous"]
 keywords = ["database", "async", "postgres", "sqlite"]
 repository = "https://github.com/yazdostum-nettr/parsql"
-version = "0.4.0"
+version = "0.5.0"
 license = "MIT OR Apache-2.0"
 
 [package]
 name = "parsql"
-version = "0.4.0"
+version = "0.5.0"
 description = "Deneyimsel bir sql yardımcı küfesidir. UYARI: bu bir ORM aracı değildir. Amaç sql yazımı ve kullanımında basit cümlecikler için kolaylık sağlamaktır."
 license.workspace = true
 edition.workspace = true
@@ -32,33 +34,41 @@ repository.workspace = true
 
 [features]
 default = []
-sqlite = ["dep:parsql-sqlite", "parsql-macros/sqlite"]
+sqlite = ["dep:parsql-sqlite", "parsql-macros/sqlite", "dep:rusqlite"]
 postgres = [
     "dep:parsql-postgres",
     "parsql-macros/postgres",
+    "dep:postgres",
 ]
 tokio-postgres = [
     "dep:parsql-tokio-postgres",
     "parsql-macros/tokio-postgres",
+    "dep:tokio-postgres",
 ]
 deadpool-postgres = [
     "dep:parsql-deadpool-postgres",
     "parsql-macros/deadpool-postgres",
+    "dep:tokio-postgres",
 ]
 
 [workspace.dependencies]
-parsql-macros = { path = "parsql-macros", version = "0.4.0" }
-parsql-sqlite = { path = "parsql-sqlite", version = "0.4.0" }
-parsql-postgres = { path = "parsql-postgres", version = "0.4.0" }
-parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.4.0" }
-parsql-deadpool-postgres = { path = "parsql-deadpool-postgres", version = "0.4.0" }
+parsql-macros = { path = "parsql-macros", version = "0.5.0" }
+parsql-sqlite = { path = "parsql-sqlite", version = "0.5.0" }
+parsql-postgres = { path = "parsql-postgres", version = "0.5.0" }
+parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.5.0" }
+parsql-deadpool-postgres = { path = "parsql-deadpool-postgres", version = "0.5.0" }
 
 [dependencies]
-parsql-macros = { workspace = true, version = "0.4.0" }
-parsql-sqlite = { workspace = true, version = "0.4.0", optional = true }
-parsql-postgres = { workspace = true, version = "0.4.0", optional = true }
-parsql-tokio-postgres = { workspace = true, version = "0.4.0", optional = true }
-parsql-deadpool-postgres = { workspace = true, version = "0.4.0", optional = true }
+parsql-macros = { workspace = true }
+parsql-sqlite = { workspace = true, optional = true }
+parsql-postgres = { workspace = true, optional = true }
+parsql-tokio-postgres = { workspace = true, optional = true }
+parsql-deadpool-postgres = { workspace = true, optional = true }
+
+# Database driver dependencies (optional)
+rusqlite = { version = "0.37", optional = true }
+postgres = { version = "0.19", optional = true }
+tokio-postgres = { version = "0.7", optional = true }
 
 [workspace.lints.clippy]
 cast_possible_truncation = 'deny'

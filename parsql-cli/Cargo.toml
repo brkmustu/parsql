@@ -1,0 +1,55 @@
+[package]
+name = "parsql-cli"
+authors.workspace = true
+description = "Command-line interface for parsql database toolkit"
+edition.workspace = true
+categories.workspace = true
+keywords.workspace = true
+repository.workspace = true
+version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "parsql"
+path = "src/main.rs"
+
+[dependencies]
+# CLI framework
+clap = { version = "4.5", features = ["derive", "env"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "2.0"
+
+# Parsql dependencies
+parsql-migrations = { path = "../parsql-migrations", features = ["postgres", "sqlite"] }
+
+# Database dependencies - matching workspace versions
+postgres = { version = "0.19", optional = true }
+rusqlite = { version = "0.37", features = ["bundled"], optional = true }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Utilities
+chrono = "0.4"
+colored = "2.0"
+indicatif = "0.17"
+dialoguer = "0.11"
+
+# File system
+walkdir = "2.4"
+glob = "0.3"
+
+# Cryptography
+sha2 = "0.10"
+
+[features]
+default = ["postgres", "sqlite"]
+postgres = ["dep:postgres", "parsql-migrations/postgres"]
+sqlite = ["dep:rusqlite", "parsql-migrations/sqlite"]
+
+[lints]
+workspace = true

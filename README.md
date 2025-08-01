@@ -52,31 +52,45 @@ Cargo.toml içinde aşağıdaki şekilde tanımlama yapın:
 
 ```toml
 [dependencies]
-parsql = { version = "0.4.0", features = ["sqlite"] }
+parsql = { version = "0.5.0", features = ["sqlite"] }
 ```
 
 veya PostgreSQL için:
 
 ```toml
 [dependencies]
-parsql = { version = "0.4.0", features = ["postgres"] }
+parsql = { version = "0.5.0", features = ["postgres"] }
 ```
 
 veya Tokio PostgreSQL için:
 
 ```toml
 [dependencies]
-parsql = { version = "0.4.0", features = ["tokio-postgres"] }
+parsql = { version = "0.5.0", features = ["tokio-postgres"] }
 ```
 
 veya Deadpool PostgreSQL için:
 
 ```toml
 [dependencies]
-parsql = { version = "0.4.0", features = ["deadpool-postgres"] }
+parsql = { version = "0.5.0", features = ["deadpool-postgres"] }
 ```
 
 ## Temel Özellikler
+
+### Prelude Modülü (v0.5.0+)
+
+Parsql artık tüm yaygın kullanılan trait'ler, makrolar ve tipleri içeren bir `prelude` modülü sunmaktadır:
+
+```rust
+use parsql::prelude::*;
+```
+
+Bu import ile şunlara erişebilirsiniz:
+- Tüm derive makroları (`Queryable`, `Insertable`, `Updateable`, `Deletable`, `FromRow`, `SqlParams`, `UpdateParams`)
+- Tüm trait'ler (`CrudOps`, `FromRow`, `SqlParams`, `SqlQuery`, `SqlCommand`, `UpdateParams`)
+- Veritabanına özel tipler (`Row`, `ToSql`, `Connection`, `Error`, vb.)
+- Extension trait'leri (`SqliteConnectionExt`, `PostgresConnectionExt`, vb.)
 
 ### Procedural Makrolar
 Parsql, veritabanı işlemlerini kolaylaştırmak için çeşitli procedural makrolar sunar:
@@ -101,8 +115,7 @@ Bağlantı havuzu (Pool) nesneleri üzerinde doğrudan CRUD işlemleri yapabilir
 // Geleneksel kullanım
 let rows_affected = insert(&pool, user).await?;
 
-// Extension metodu ile kullanım
-use parsql_deadpool_postgres::CrudOps;
+// Extension metodu ile kullanım (prelude ile otomatik gelir)
 let rows_affected = pool.insert(user).await?;
 ```
 
@@ -114,8 +127,7 @@ Transaction nesneleri üzerinde doğrudan CRUD işlemleri yapabilirsiniz:
 // Geleneksel kullanım
 let (tx, rows_affected) = tx_insert(tx, user).await?;
 
-// Extension metodu ile kullanım
-use parsql_deadpool_postgres::TransactionOps;
+// Extension metodu ile kullanım (prelude ile otomatik gelir)
 let rows_affected = tx.insert(user).await?;
 ```
 
@@ -213,11 +225,7 @@ Bu, çalıştırılan tüm SQL sorgularını konsola yazdıracaktır.
 ### SQLite ile Kullanım
 
 ```rust
-use parsql::{
-    sqlite::{fetch, insert},
-    macros::{Queryable, Insertable, FromRow, SqlParams},
-};
-use rusqlite::Connection;
+use parsql::prelude::*;
 
 // Bir kayıt almak için
 #[derive(Queryable, FromRow, SqlParams, Debug)]
@@ -269,10 +277,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ### Deadpool PostgreSQL ile Asenkron Bağlantı Havuzu Kullanımı
 
 ```rust
-use parsql_deadpool_postgres::{CrudOps, TransactionOps};
-use tokio_postgres::NoTls;
+use parsql::prelude::*;
 use deadpool_postgres::{Config, Runtime};
-use parsql_macros::{Queryable, Insertable, FromRow, SqlParams, Updateable};
 
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table("users")]
@@ -345,6 +351,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 - Büyük veri kümeleri için `get_all` yerine sayfalama (limit ve offset) kullanın
 - Filtreleri veritabanı seviyesinde uygulayın, uygulamanızda değil
 
+## Veritabanı Migrasyonları
+
+Parsql, basit ve tip güvenli bir migrasyon sistemi içerir:
+
+```rust
+use parsql::prelude::*;
+
+// Migration tanımlama
+pub struct CreateUsersTable;
+
+impl Migration for CreateUsersTable {
+    fn version(&self) -> i64 { 20240101120000 }
+    fn name(&self) -> &str { "create_users_table" }
+    
+    fn up(&self, conn: &mut dyn MigrationConnection) -> Result<()> {
+        conn.execute("CREATE TABLE users (id SERIAL PRIMARY KEY, email VARCHAR(255))")
+    }
+    
+    fn down(&self, conn: &mut dyn MigrationConnection) -> Result<()> {
+        conn.execute("DROP TABLE users")
+    }
+}
+
+// Migration çalıştırma
+let mut runner = MigrationRunner::new();
+runner.add_migration(Box::new(CreateUsersTable));
+runner.run(&mut conn)?;
+```
+
+### CLI Aracı
+
+Parsql CLI ile migration yönetimi kolaylaşır:
+
+```bash
+# Kurulum
+cargo install parsql-cli
+
+# Proje başlatma
+parsql init
+
+# Migration oluşturma
+parsql migrate create "create users table"
+
+# Migration çalıştırma
+parsql migrate run
+
+# Durum kontrolü
+parsql migrate status --detailed
+
+# Geri alma
+parsql migrate rollback --to 20240101000000
+```
+
 ## Detaylı Dökümantasyon
 
 Her veritabanı adaptörü için daha detaylı bilgi ve örnekler, ilgili alt paketlerin README dosyalarında bulunmaktadır:
@@ -353,6 +412,8 @@ Her veritabanı adaptörü için daha detaylı bilgi ve örnekler, ilgili alt pa
 - [PostgreSQL Dökümantasyonu](./parsql-postgres/README.md)
 - [Tokio PostgreSQL Dökümantasyonu](./parsql-tokio-postgres/README.md)
 - [Deadpool PostgreSQL Dökümantasyonu](./parsql-deadpool-postgres/README.md)
+- [Migration Sistemi](./parsql-migrations/README.md)
+- [CLI Aracı](./parsql-cli/README.md)
 
 ## Lisans
 

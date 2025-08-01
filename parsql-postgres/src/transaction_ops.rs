@@ -1,73 +1,49 @@
+use crate::traits::{CrudOps, FromRow, SqlCommand, SqlParams, SqlQuery, UpdateParams};
 use postgres::{types::FromSql, Error, Row, Transaction};
-use crate::traits::{SqlQuery, SqlParams, FromRow, UpdateParams, CrudOps};
 
 /// CrudOps trait implementasyonu Transaction<'_> için.
 /// Bu sayede transaction içinde tüm CRUD işlemleri extension metotları olarak kullanılabilir.
 impl<'a> CrudOps for Transaction<'a> {
-    fn insert<T: SqlQuery + SqlParams, P:for<'b> FromSql<'b> + Send + Sync>(&mut self, entity: T) -> Result<P, Error> {
-        let sql = T::query();
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
-        }
-
-        let params = entity.params();
-        let row = self.query_one(&sql, &params)?;
-        row.try_get::<_, P>(0)
+    fn insert<T: SqlCommand + SqlParams, P: for<'b> FromSql<'b> + Send + Sync>(
+        &mut self,
+        entity: T,
+    ) -> Result<P, Error> {
+        tx_insert(self, entity)
     }
 
-    fn update<T: SqlQuery + UpdateParams>(&mut self, entity: T) -> Result<u64, Error> {
-        let sql = T::query();
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
-        }
-
-        let params = entity.params();
-        self.execute(&sql, &params)
+    fn update<T: SqlCommand + UpdateParams>(&mut self, entity: T) -> Result<u64, Error> {
+        tx_update(self, entity)
     }
 
-    fn delete<T: SqlQuery + SqlParams>(&mut self, entity: T) -> Result<u64, Error> {
-        let sql = T::query();
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
-        }
-
-        let params = entity.params();
-        self.execute(&sql, &params)
+    fn delete<T: SqlCommand + SqlParams>(&mut self, entity: T) -> Result<u64, Error> {
+        tx_delete(self, entity)
     }
 
-    fn fetch<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<T, Error> {
-        let sql = T::query();
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
-        }
-        
-        let params = entity.params();
-        let row = self.query_one(&sql, &params)?;
-        T::from_row(&row)
+    fn fetch<P, R>(&mut self, params: &P) -> Result<R, Error>
+    where
+        P: SqlQuery<R> + SqlParams,
+        R: FromRow,
+    {
+        tx_fetch(self, params)
     }
 
-    fn fetch_all<T: SqlQuery + FromRow + SqlParams>(&mut self, entity: &T) -> Result<Vec<T>, Error> {
-        let sql = T::query();
-        if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
-        }
-        
-        let params = entity.params();
-        let rows = self.query(&sql, &params)?;
-        
-        rows.iter()
-            .map(|row| T::from_row(row))
-            .collect::<Result<Vec<_>, _>>()
+    fn fetch_all<P, R>(&mut self, params: &P) -> Result<Vec<R>, Error>
+    where
+        P: SqlQuery<R> + SqlParams,
+        R: FromRow,
+    {
+        tx_fetch_all(self, params)
     }
 
     fn select<T, F, R>(&mut self, entity: &T, to_model: F) -> Result<R, Error>
     where
-        T: SqlQuery + SqlParams,
+        T: SqlQuery<T> + SqlParams,
         F: FnOnce(&Row) -> Result<R, Error>,
     {
         let sql = T::query();
+
         if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
+            println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
         }
 
         let params = entity.params();
@@ -77,36 +53,37 @@ impl<'a> CrudOps for Transaction<'a> {
 
     fn select_all<T, F, R>(&mut self, entity: &T, to_model: F) -> Result<Vec<R>, Error>
     where
-        T: SqlQuery + SqlParams,
+        T: SqlQuery<T> + SqlParams,
         F: FnMut(&Row) -> Result<R, Error>,
     {
         let sql = T::query();
+
         if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
-            println!("[PARSQL-POSTGRES] Execute SQL (Transaction): {}", sql);
+            println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
         }
 
         let params = entity.params();
         let rows = self.query(&sql, &params)?;
-        
+
         rows.iter().map(to_model).collect()
     }
 }
 
 /// # begin
-/// 
+///
 /// Yeni bir transaction başlatır.
-/// 
+///
 /// ## Parametreler
 /// - `client`: Veritabanı bağlantı istemcisi
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<Transaction<'_>, Error>`: Başarılı olursa, transaction nesnesini döner; hata durumunda Error döner
-/// 
+///
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::transactional::begin;
-/// 
+///
 /// fn main() -> Result<(), Error> {
 ///     let mut client = Client::connect(
 ///         "host=localhost user=postgres dbname=test",
@@ -127,21 +104,21 @@ pub fn begin<'a>(client: &'a mut postgres::Client) -> Result<Transaction<'a>, Er
 }
 
 /// # tx_insert
-/// 
+///
 /// Transaction içinde bir kaydı veritabanına ekler.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Eklenecek veri nesnesi (SqlQuery ve SqlParams trait'lerini implement etmeli)
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, P), Error>`: Başarılı olursa, transaction ve etkilenen kayıt sayısını döner; hata durumunda Error döner
-/// 
+///
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::transactional::{begin, tx_insert};
-/// 
+///
 /// #[derive(Insertable, SqlParams)]
 /// #[table("users")]
 /// pub struct InsertUser {
@@ -171,30 +148,40 @@ pub fn begin<'a>(client: &'a mut postgres::Client) -> Result<Transaction<'a>, Er
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_insert<'a, T, P:for<'b> FromSql<'b> + Send + Sync>(mut tx: Transaction<'a>, entity: T) -> Result<(Transaction<'a>, P), Error>
+pub fn tx_insert<'a, T, P: for<'b> FromSql<'b> + Send + Sync>(
+    tx: &mut Transaction<'a>,
+    entity: T,
+) -> Result<P, Error>
 where
-    T: SqlQuery + SqlParams,
+    T: SqlCommand + SqlParams,
 {
-    let result = tx.insert::<T, P>(entity)?;
-    Ok((tx, result))
+    let sql = T::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let row = tx.query_one(&sql, &params)?;
+    row.try_get::<_, P>(0)
 }
 
 /// # tx_update
-/// 
+///
 /// Transaction içinde bir kaydı günceller.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Güncellenecek veri nesnesi (SqlQuery ve UpdateParams trait'lerini implement etmeli)
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, u64), Error>`: Başarılı olursa, transaction ve etkilenen kayıt sayısını döner; hata durumunda Error döner
-/// 
+///
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::transactional::{begin, tx_update};
-/// 
+///
 /// #[derive(Updateable, UpdateParams)]
 /// #[table("users")]
 /// #[update("name, email")]
@@ -228,30 +215,36 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_update<'a, T>(mut tx: Transaction<'a>, entity: T) -> Result<(Transaction<'a>, u64), Error>
+pub fn tx_update<'a, T>(tx: &mut Transaction<'a>, entity: T) -> Result<u64, Error>
 where
-    T: SqlQuery + UpdateParams,
+    T: SqlCommand + UpdateParams,
 {
-    let result = tx.update(entity)?;
-    Ok((tx, result))
+    let sql = T::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    tx.execute(&sql, &params)
 }
 
 /// # tx_delete
-/// 
+///
 /// Transaction içinde bir kaydı siler.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Silinecek veri nesnesi (SqlQuery ve SqlParams trait'lerini implement etmeli)
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, u64), Error>`: Başarılı olursa, transaction ve etkilenen kayıt sayısını döner; hata durumunda Error döner
-/// 
+///
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::transactional::{begin, tx_delete};
-/// 
+///
 /// #[derive(Deletable, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
@@ -278,30 +271,36 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_delete<'a, T>(mut tx: Transaction<'a>, entity: T) -> Result<(Transaction<'a>, u64), Error>
+pub fn tx_delete<'a, T>(tx: &mut Transaction<'a>, entity: T) -> Result<u64, Error>
 where
-    T: SqlQuery + SqlParams,
+    T: SqlCommand + SqlParams,
 {
-    let result = tx.delete(entity)?;
-    Ok((tx, result))
+    let sql = T::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    tx.execute(&sql, &params)
 }
 
 /// # tx_fetch
-/// 
+///
 /// Transaction içinde tek bir kaydı getirir.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Sorgu parametresi nesnesi (SqlQuery, FromRow ve SqlParams trait'lerini implement etmeli)
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, T), Error>`: Başarılı olursa, transaction ve bulunan kaydı döner; hata durumunda Error döner
-/// 
+///
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::transactional::{begin, tx_fetch};
-/// 
+///
 /// #[derive(Queryable, FromRow, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("id = $")]
@@ -334,30 +333,38 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_fetch<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, T), Error>
+pub fn tx_fetch<'a, P, R>(tx: &mut Transaction<'a>, params: &P) -> Result<R, Error>
 where
-    T: SqlQuery + FromRow + SqlParams,
+    P: SqlQuery<R> + SqlParams,
+    R: FromRow,
 {
-    let result = tx.fetch(entity)?;
-    Ok((tx, result))
+    let sql = P::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let query_params = params.params();
+    let row = tx.query_one(&sql, &query_params)?;
+    R::from_row(&row)
 }
 
 /// # tx_fetch_all
-/// 
+///
 /// Transaction içinde birden fazla kaydı getirir.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Sorgu parametresi nesnesi (SqlQuery, FromRow ve SqlParams trait'lerini implement etmeli)
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, Vec<T>), Error>`: Başarılı olursa, transaction ve bulunan kayıtların listesini döner; hata durumunda Error döner
-/// 
+///
 /// ## Örnek Kullanım
 /// ```rust,no_run
 /// use postgres::{Client, NoTls, Error};
 /// use parsql::postgres::transactional::{begin, tx_fetch_all};
-/// 
+///
 /// #[derive(Queryable, FromRow, SqlParams)]
 /// #[table("users")]
 /// #[where_clause("active = $")]
@@ -392,52 +399,90 @@ where
 ///     Ok(())
 /// }
 /// ```
-pub fn tx_fetch_all<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, Vec<T>), Error>
+pub fn tx_fetch_all<'a, P, R>(tx: &mut Transaction<'a>, params: &P) -> Result<Vec<R>, Error>
 where
-    T: SqlQuery + FromRow + SqlParams,
+    P: SqlQuery<R> + SqlParams,
+    R: FromRow,
 {
-    let result = tx.fetch_all(entity)?;
-    Ok((tx, result))
+    let sql = P::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let query_params = params.params();
+    let rows = tx.query(&sql, &query_params)?;
+
+    let mut results = Vec::with_capacity(rows.len());
+    for row in rows {
+        results.push(R::from_row(&row)?);
+    }
+
+    Ok(results)
 }
 
 /// # tx_select
-/// 
+///
 /// Transaction içinde özel bir sorgu çalıştırır ve sonucu dönüştürür.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Sorgu parametresi nesnesi (SqlQuery ve SqlParams trait'lerini implement etmeli)
 /// - `to_model`: Row nesnesini hedef nesne tipine dönüştüren fonksiyon
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, R), Error>`: Başarılı olursa, transaction ve dönüştürülmüş nesneyi döner; hata durumunda Error döner
-pub fn tx_select<'a, T, F, R>(mut tx: Transaction<'a>, entity: &T, to_model: F) -> Result<(Transaction<'a>, R), Error>
+pub fn tx_select<'a, T, F, R>(tx: &mut Transaction<'a>, entity: &T, to_model: F) -> Result<R, Error>
 where
-    T: SqlQuery + SqlParams,
-    F: FnOnce(&Row) -> Result<R, Error>,
+    T: SqlQuery<T> + SqlParams,
+    F: Fn(&Row) -> Result<R, Error>,
 {
-    let result = tx.select(entity, to_model)?;
-    Ok((tx, result))
+    let sql = T::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let row = tx.query_one(&sql, &params)?;
+    to_model(&row)
 }
 
 /// # tx_select_all
-/// 
+///
 /// Transaction içinde özel bir sorgu çalıştırır ve tüm sonuçları dönüştürür.
-/// 
+///
 /// ## Parametreler
 /// - `tx`: Transaction nesnesi
 /// - `entity`: Sorgu parametresi nesnesi (SqlQuery ve SqlParams trait'lerini implement etmeli)
 /// - `to_model`: Row nesnesini hedef nesne tipine dönüştüren fonksiyon
-/// 
+///
 /// ## Dönüş Değeri
 /// - `Result<(Transaction<'_>, Vec<R>), Error>`: Başarılı olursa, transaction ve dönüştürülmüş nesnelerin listesini döner; hata durumunda Error döner
-pub fn tx_select_all<'a, T, F, R>(mut tx: Transaction<'a>, entity: &T, to_model: F) -> Result<(Transaction<'a>, Vec<R>), Error>
+pub fn tx_select_all<'a, T, F, R>(
+    tx: &mut Transaction<'a>,
+    entity: &T,
+    to_model: F,
+) -> Result<Vec<R>, Error>
 where
-    T: SqlQuery + SqlParams,
-    F: FnMut(&Row) -> Result<R, Error>,
+    T: SqlQuery<T> + SqlParams,
+    F: Fn(&Row) -> Result<R, Error>,
 {
-    let result = tx.select_all(entity, to_model)?;
-    Ok((tx, result))
+    let sql = T::query();
+
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-POSTGRES] Execute SQL: {}", sql);
+    }
+
+    let params = entity.params();
+    let rows = tx.query(&sql, &params)?;
+
+    let mut results = Vec::with_capacity(rows.len());
+    for row in rows {
+        results.push(to_model(&row)?);
+    }
+
+    Ok(results)
 }
 
 // Geriye dönük uyumluluk için eski tx_get fonksiyonunu koruyalım
@@ -446,16 +491,15 @@ where
     note = "Renamed to `tx_fetch`. Please use `tx_fetch` function instead."
 )]
 /// # tx_get
-/// 
+///
 /// Transaction içinde tek bir kaydı getirir.
-/// 
+///
 /// This function is deprecated. Please use `tx_fetch` instead.
-pub fn tx_get<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, T), Error>
+pub fn tx_get<'a, T>(tx: &mut Transaction<'a>, params: &T) -> Result<T, Error>
 where
-    T: SqlQuery + FromRow + SqlParams,
+    T: SqlQuery<T> + FromRow + SqlParams,
 {
-    let result = tx.fetch(entity)?;
-    Ok((tx, result))
+    tx_fetch(tx, params)
 }
 
 // Geriye dönük uyumluluk için eski tx_get_all fonksiyonunu koruyalım
@@ -464,14 +508,13 @@ where
     note = "Renamed to `tx_fetch_all`. Please use `tx_fetch_all` function instead."
 )]
 /// # tx_get_all
-/// 
+///
 /// Transaction içinde birden fazla kaydı getirir.
-/// 
+///
 /// This function is deprecated. Please use `tx_fetch_all` instead.
-pub fn tx_get_all<'a, T>(mut tx: Transaction<'a>, entity: &T) -> Result<(Transaction<'a>, Vec<T>), Error>
+pub fn tx_get_all<'a, T>(tx: &mut Transaction<'a>, params: &T) -> Result<Vec<T>, Error>
 where
-    T: SqlQuery + FromRow + SqlParams,
+    T: SqlQuery<T> + FromRow + SqlParams,
 {
-    let result = tx.fetch_all(entity)?;
-    Ok((tx, result))
+    tx_fetch_all(tx, params)
 }

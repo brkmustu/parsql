@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use parsql_macros::{FromRowPostgres as FromRow, Insertable, Queryable, SqlParams};
-use parsql_postgres::traits::{CrudOps, FromRow, SqlParams, SqlQuery};
+use parsql_postgres::traits::{CrudOps, FromRow, SqlCommand, SqlParams, SqlQuery};
 use postgres::{types::ToSql, Client, Error, NoTls, Row};
 
 #[derive(Insertable, SqlParams)]
@@ -62,7 +62,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 email: "SampleEmail".to_string(),
                 state: 1,
             });
-            let _ = db.fetch::<GetUser>(&user);
+            let _ = db.fetch::<GetUser, GetUser>(&user);
         })
     });
 }

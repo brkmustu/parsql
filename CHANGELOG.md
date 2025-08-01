@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [0.4.0] - 2025-05-12
+## [0.5.0] - 2025-05-12
 
 ### 🚀 Features
 
@@ -39,7 +39,7 @@ Geriye dönük uyumluluk korunduğu için mevcut kodların çalışmaya devam et
 - Prosedürel makroların bulunduğu proje daha modüler bir hale getirildi.
 - Insert işlemi neticesinde geri döndürülen id'nin tipi generic hale getirilerek, farklı türden id'ler için destek sağlayacak hale getirildi. modülerlik üzerine; makroların re-export edilme yolu, ilgili veritabanı için olan 'feature flag' üzerinden olacak şekilde güncellendi.
 - 'examples' klasörü altındaki projelerdeki örnekler, yeni geliştirmelere uyumlu hale getirildi.
-- Versiyon 0.3.7'den 0.4.0'a yükseltildi.
+- Versiyon 0.4.0'den 0.5.0'a yükseltildi.
 
 ### 📚 Documentation
 

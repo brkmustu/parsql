@@ -1,0 +1,21 @@
+[package]
+name = "deadpool-postgres-example"
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+categories.workspace = true
+keywords.workspace = true
+repository.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+parsql = { path = "../..", features = ["deadpool-postgres"] }
+deadpool-postgres = "0.14"
+tokio-postgres = "0.7"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1.0"
+chrono = "0.4"
+
+[lints]
+workspace = true

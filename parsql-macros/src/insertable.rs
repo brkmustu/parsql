@@ -1,7 +1,7 @@
-use proc_macro::TokenStream;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
-use quote::quote;
 use crate::query_builder;
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
 /// Implements the Insertable derive macro.
 pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
@@ -45,65 +45,46 @@ pub(crate) fn derive_insertable_impl(input: TokenStream) -> TokenStream {
 
     let column_names = fields.iter().map(|f| f.as_str()).collect::<Vec<_>>();
 
-    let safe_query = if cfg!(any(feature = "postgres", feature = "tokio-postgres", feature = "deadpool-postgres")) {
-        // PostgreSQL için sorgu oluştur
-        let mut builder = query_builder::SafeQueryBuilder::new();
-        
-        builder.add_keyword("INSERT INTO");
-        builder.add_identifier(&table);
-        builder.add_keyword("(");
-        builder.add_comma_list(&column_names);
-        builder.add_keyword(")");
-        builder.add_keyword("VALUES");
-        builder.add_keyword("(");
-        
-        let placeholders: Vec<String> = (1..=column_names.len())
-            .map(|i| format!("${}", i))
-            .collect();
-        builder.query.push_str(&placeholders.join(", "));
-        
-        builder.add_keyword(")");
-
-        if let Some(ref column) = returning_column {
-            builder.add_keyword("RETURNING");
-            builder.add_identifier(column);
-        }
-
-        builder.build()
-    } else if cfg!(feature = "sqlite") {
-        // SQLite için sorgu oluştur
-        let mut builder = query_builder::SafeQueryBuilder::new();
-        
-        builder.add_keyword("INSERT INTO");
-        builder.add_identifier(&table);
-        builder.add_keyword("(");
-        builder.add_comma_list(&column_names);
-        builder.add_keyword(")");
-        builder.add_keyword("VALUES");
-        builder.add_keyword("(");
-        
-        let placeholders: Vec<String> = (1..=column_names.len())
-            .map(|i| format!("?{}", i))
-            .collect();
-        builder.query.push_str(&placeholders.join(", "));
-        
-        builder.add_keyword(")");
-
-        if let Some(ref column) = returning_column {
-            builder.add_keyword(";");
-            builder.add_keyword("SELECT");
-            builder.add_keyword("last_insert_rowid()");
-            builder.add_keyword("AS");
-            builder.add_identifier(column);
-        }
-
-        builder.build()
+    // Create placeholders for SQL parameters
+    let placeholders: Vec<String> = if cfg!(any(
+        feature = "postgres",
+        feature = "tokio-postgres",
+        feature = "deadpool-postgres"
+    )) {
+        // PostgreSQL uses numbered placeholders ($1, $2, ...)
+        (1..=fields.len()).map(|i| format!("${}", i)).collect()
     } else {
-        panic!("At least one database feature must be enabled (postgres or sqlite)")
+        // SQLite uses ? placeholders
+        (0..fields.len()).map(|_| "?".to_string()).collect()
     };
 
+    let mut builder = query_builder::SafeQueryBuilder::new();
+
+    builder.add_keyword("INSERT INTO");
+    builder.add_identifier(&table);
+    builder.add_raw("(");
+    builder.add_comma_list(&column_names);
+    builder.add_raw(")");
+    builder.add_keyword("VALUES");
+    builder.add_raw("(");
+    builder.add_raw(&placeholders.join(", "));
+    builder.add_raw(")");
+
+    // Add RETURNING clause if specified
+    if let Some(returning_col) = returning_column {
+        builder.add_keyword("RETURNING");
+        builder.add_identifier(&returning_col);
+    }
+
+    let safe_query = builder.build();
+
+    // Log the generated SQL if tracing is enabled
+    if std::env::var("PARSQL_TRACE").unwrap_or_default() == "1" {
+        println!("[PARSQL-MACROS] Generated INSERT SQL: {}", safe_query);
+    }
+
     let expanded = quote! {
-        impl SqlQuery for #struct_name {
+        impl SqlCommand for #struct_name {
             fn query() -> String {
                 #safe_query.to_string()
             }

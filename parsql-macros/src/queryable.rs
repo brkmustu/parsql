@@ -1,11 +1,29 @@
-use proc_macro::TokenStream;
-use syn::{parse_macro_input, Data, DeriveInput, Fields};
-use quote::quote;
 use crate::{log_message, number_where_clause_params, query_builder, SqlParamCounter};
+use proc_macro::TokenStream;
+use quote::quote;
+use syn::{parse_macro_input, Data, DeriveInput, Fields};
 
 pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let struct_name = &input.ident;
+
+    // Extract result_type attribute if present
+    let result_type = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("result_type"))
+        .map(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .expect("Expected a string literal for result_type")
+                .value()
+        });
+
+    // If result_type is not provided, use the struct itself
+    let result_type_ident = if let Some(result_type_str) = result_type {
+        syn::Ident::new(&result_type_str, struct_name.span())
+    } else {
+        struct_name.clone()
+    };
 
     // Table name and column extraction
     let table = input
@@ -124,18 +142,49 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
                 .value()
         });
 
-    let mut builder = query_builder::SafeQueryBuilder::new();
+    // Get the optional distinct attribute
+    let distinct = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("distinct"))
+        .is_some();
     
+    // Get distinct columns if specified
+    let distinct_columns = input
+        .attrs
+        .iter()
+        .find(|attr| attr.path().is_ident("distinct"))
+        .and_then(|attr| {
+            attr.parse_args::<syn::LitStr>()
+                .ok()
+                .map(|lit| lit.value())
+        });
+
+    let mut builder = query_builder::SafeQueryBuilder::new();
+
     builder.add_keyword("SELECT");
+    
+    // Add DISTINCT if present
+    if distinct {
+        if let Some(columns) = &distinct_columns {
+            // DISTINCT ON (columns) - PostgreSQL specific
+            builder.add_keyword("DISTINCT ON");
+            builder.add_raw(&format!("({})", columns));
+        } else {
+            // Simple DISTINCT
+            builder.add_keyword("DISTINCT");
+        }
+    }
+    
     builder.add_raw(&select);
     builder.add_keyword("FROM");
     builder.add_identifier(&tables);
-    
+
     // Add join expressions separately and place a space around each one
     for join in joins {
         builder.add_raw(&format!(" {} ", join.trim()));
     }
-    
+
     if !adjusted_where_clause.is_empty() {
         builder.add_keyword("WHERE");
         builder.add_raw(&adjusted_where_clause);
@@ -199,8 +248,9 @@ pub fn derive_queryable_impl(input: TokenStream) -> TokenStream {
     log_message(&format!("Generated SQL Query: {}", safe_query));
     log_message(&format!("Total param count: {}", param_counter.count()));
 
+    // Generate SqlQuery implementation with generic type parameter
     let expanded = quote! {
-        impl SqlQuery for #struct_name {
+        impl SqlQuery<#result_type_ident> for #struct_name {
             fn query() -> String {
                 #safe_query.to_string()
             }

@@ -56,7 +56,7 @@ Cargo.toml dosyanıza şu şekilde ekleyin:
 ```toml
 [dependencies]
 # Tokio PostgreSQL için
-parsql = { version = "0.4.0", features = ["tokio-postgres"] }
+parsql = { version = "0.5.0", features = ["tokio-postgres"] }
 ```
 
 ## Temel Kullanım
@@ -136,13 +136,12 @@ Veritabanı işlemlerini gerçekleştirmek için iki yaklaşım sunulmaktadır:
 1. Fonksiyon tabanlı yaklaşım (`get`, `insert`, `update`, vb.)
 2. Extension metot yaklaşımı (`client.get()`, `client.insert()`, vb.) - `CrudOps` trait
 
-### Extension Metot Yaklaşımı (CrudOps Trait)
+### Prelude Kullanımı (Önerilen)
+
+v0.5.0'dan itibaren tüm gerekli import'lar için prelude kullanabilirsiniz:
 
 ```rust
-use parsql::{
-    macros::{Queryable, FromRow, SqlParams},
-    tokio_postgres::{CrudOps},
-};
+use parsql::prelude::*;
 
 #[derive(Queryable, FromRow, SqlParams, Debug)]
 #[table("users")]

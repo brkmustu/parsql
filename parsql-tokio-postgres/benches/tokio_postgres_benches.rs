@@ -1,6 +1,9 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use parsql_macros::{Insertable, SqlParams};
-use parsql_tokio_postgres::{insert, traits::{SqlParams, SqlQuery}};
+use parsql_tokio_postgres::{
+    insert,
+    traits::{SqlCommand, SqlParams, SqlQuery},
+};
 use tokio_postgres::{types::ToSql, Client, NoTls};
 
 #[derive(Insertable, SqlParams)]

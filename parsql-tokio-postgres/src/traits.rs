@@ -1,9 +1,19 @@
-use postgres::{types::{FromSql, ToSql}, Error, Row};
+use postgres::{
+    types::{FromSql, ToSql},
+    Error, Row,
+};
 
-/// Trait for generating SQL queries.
-/// This trait is implemented by the derive macro `Queryable`, `Insertable`, `Updateable`, and `Deletable`.
-pub trait SqlQuery {
+/// Trait for generating SQL queries (for SELECT operations).
+/// This trait is implemented by the derive macro `Queryable`.
+pub trait SqlQuery<R> {
     /// Returns the SQL query string.
+    fn query() -> String;
+}
+
+/// Trait for generating SQL commands (for INSERT/UPDATE/DELETE operations).
+/// This trait is implemented by the derive macros `Insertable`, `Updateable`, and `Deletable`.
+pub trait SqlCommand {
+    /// Returns the SQL command string.
     fn query() -> String;
 }
 
@@ -25,10 +35,10 @@ pub trait UpdateParams {
 /// This trait is implemented by the derive macro `FromRow`.
 pub trait FromRow {
     /// Converts a database row to a Rust struct.
-    /// 
+    ///
     /// # Arguments
     /// * `row` - A reference to a database row
-    /// 
+    ///
     /// # Returns
     /// * `Result<Self, Error>` - The converted struct or an error
     fn from_row(row: &Row) -> Result<Self, Error>
@@ -45,10 +55,10 @@ pub trait CrudOps {
     /// Inserts a new record into the database.
     ///
     /// # Arguments
-    /// * `entity` - Data object to be inserted (must implement SqlQuery and SqlParams traits)
+    /// * `entity` - Data object to be inserted (must implement SqlCommand and SqlParams traits)
     ///
     /// # Return Value
-    /// * `Result<u64, Error>` - On success, returns the number of inserted records; on failure, returns Error
+    /// * `Result<P, Error>` - On success, returns the inserted ID or return value; on failure, returns Error
     ///
     /// # Example
     /// ```rust,no_run
@@ -75,14 +85,14 @@ pub trait CrudOps {
     /// # Ok(())
     /// # }
     /// ```
-    async fn insert<T, P:for<'a> FromSql<'a> + Send + Sync>(&self, entity: T) -> Result<P, Error>
+    async fn insert<T, P: for<'a> FromSql<'a> + Send + Sync>(&self, entity: T) -> Result<P, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static;
+        T: SqlCommand + SqlParams + Send + Sync + 'static;
 
     /// Updates an existing record in the database.
     ///
     /// # Arguments
-    /// * `entity` - Data object containing the update information (must implement SqlQuery and UpdateParams traits)
+    /// * `entity` - Data object containing the update information (must implement SqlCommand and UpdateParams traits)
     ///
     /// # Return Value
     /// * `Result<bool, Error>` - On success, returns true if at least one record was updated; on failure, returns Error
@@ -118,12 +128,12 @@ pub trait CrudOps {
     /// ```
     async fn update<T>(&self, entity: T) -> Result<bool, Error>
     where
-        T: SqlQuery + UpdateParams + Send + Sync + 'static;
+        T: SqlCommand + UpdateParams + Send + Sync + 'static;
 
     /// Deletes a record from the database.
     ///
     /// # Arguments
-    /// * `entity` - Data object containing delete conditions (must implement SqlQuery and SqlParams traits)
+    /// * `entity` - Data object containing delete conditions (must implement SqlCommand and SqlParams traits)
     ///
     /// # Return Value
     /// * `Result<u64, Error>` - On success, returns the number of deleted records; on failure, returns Error
@@ -152,7 +162,7 @@ pub trait CrudOps {
     /// ```
     async fn delete<T>(&self, entity: T) -> Result<u64, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static;
+        T: SqlCommand + SqlParams + Send + Sync + 'static;
 
     /// Retrieves a single record from the database and converts it to a struct.
     ///
@@ -190,9 +200,10 @@ pub trait CrudOps {
     /// # Ok(())
     /// # }
     /// ```
-    async fn fetch<T>(&self, params: T) -> Result<T, Error>
+    async fn fetch<P, R>(&self, params: P) -> Result<R, Error>
     where
-        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static;
+        P: SqlQuery<R> + SqlParams + Send + Sync + 'static,
+        R: FromRow + Send + Sync + 'static;
 
     /// Retrieves multiple records from the database and converts them to a vec of structs.
     ///
@@ -232,9 +243,10 @@ pub trait CrudOps {
     /// # Ok(())
     /// # }
     /// ```
-    async fn fetch_all<T>(&self, params: T) -> Result<Vec<T>, Error>
+    async fn fetch_all<P, R>(&self, params: P) -> Result<Vec<R>, Error>
     where
-        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static;
+        P: SqlQuery<R> + SqlParams + Send + Sync + 'static,
+        R: FromRow + Send + Sync + 'static;
 
     /// Executes a custom SELECT query and converts the results using the provided function.
     ///
@@ -284,7 +296,7 @@ pub trait CrudOps {
     /// ```
     async fn select<T, F, R>(&self, entity: T, to_model: F) -> Result<R, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static,
+        T: SqlQuery<T> + SqlParams + Send + Sync + 'static,
         F: Fn(&Row) -> Result<R, Error> + Send + Sync + 'static,
         R: Send + 'static;
 
@@ -336,7 +348,7 @@ pub trait CrudOps {
     /// ```
     async fn select_all<T, F, R>(&self, entity: T, to_model: F) -> Result<Vec<R>, Error>
     where
-        T: SqlQuery + SqlParams + Send + Sync + 'static,
+        T: SqlQuery<T> + SqlParams + Send + Sync + 'static,
         F: Fn(&Row) -> R + Send + Sync + 'static,
         R: Send + 'static;
 
@@ -346,7 +358,7 @@ pub trait CrudOps {
     )]
     async fn get<T>(&self, params: T) -> Result<T, Error>
     where
-        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+        T: SqlQuery<T> + FromRow + SqlParams + Send + Sync + 'static,
     {
         self.fetch(params).await
     }
@@ -357,7 +369,7 @@ pub trait CrudOps {
     )]
     async fn get_all<T>(&self, params: T) -> Result<Vec<T>, Error>
     where
-        T: SqlQuery + FromRow + SqlParams + Send + Sync + 'static,
+        T: SqlQuery<T> + FromRow + SqlParams + Send + Sync + 'static,
     {
         self.fetch_all(params).await
     }

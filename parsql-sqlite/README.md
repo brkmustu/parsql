@@ -51,7 +51,7 @@ Cargo.toml dosyanıza şu şekilde ekleyin:
 
 ```toml
 [dependencies]
-parsql = { version = "0.4.0", features = ["sqlite"] }
+parsql = { version = "0.5.0", features = ["sqlite"] }
 ```
 
 ## Kullanım
@@ -86,18 +86,12 @@ fn main() -> Result<()> {
 }
 ```
 
-### Fonksiyon Tabanlı Yaklaşım
+### Prelude Kullanımı (Önerilen)
+
+v0.5.0'dan itibaren tüm gerekli import'lar için prelude kullanabilirsiniz:
 
 ```rust
-use parsql::sqlite::{
-    macros::{FromRow, Insertable, Queryable, SqlParams},
-    traits::{FromRow, SqlParams, SqlQuery},
-};
-use rusqlite::{
-    Connection,
-    types::{FromSql, ToSql},
-    Error, Result, Row,
-};
+use parsql::prelude::*;
 
 #[derive(Insertable, SqlParams)]
 #[table("users")]
@@ -140,16 +134,10 @@ fn main() -> Result<()> {
 
 ### Extension Metot Yaklaşımı (CrudOps Trait)
 
+Extension metodları prelude ile otomatik olarak kullanılabilir hale gelir:
+
 ```rust
-use parsql::sqlite::{
-    macros::{FromRow, Insertable, Queryable, SqlParams},
-    traits::{FromRow, SqlParams, SqlQuery},
-};
-use rusqlite::{
-    Connection,
-    types::{FromSql, ToSql},
-    Error, Result, Row,
-};
+use parsql::prelude::*;
 
 #[derive(Insertable, SqlParams)]
 #[table("users")]

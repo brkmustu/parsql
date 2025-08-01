@@ -1,9 +1,5 @@
 pub use parsql_macros::{
-    Deletable,
-    Insertable,
-    Queryable,
-    SqlParams,
-    Updateable,
-    UpdateParams,
-    FromRowSqlite as FromRow
+    Deletable, FromRowSqlite as FromRow, Insertable, Queryable, SqlParams, UpdateParams, Updateable,
 };
+
+pub use crate::traits::SqlCommand;

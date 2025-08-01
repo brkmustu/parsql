@@ -9,3 +9,6 @@ pub use parsql_tokio_postgres as tokio_postgres;
 
 #[cfg(feature = "deadpool-postgres")]
 pub use parsql_deadpool_postgres as deadpool_postgres;
+
+// Prelude module for convenient imports
+pub mod prelude;

@@ -1,8 +1,0 @@
-[package]
-name = "example-parsql-postgres"
-version = "0.3.2"
-edition = "2021"
-
-[dependencies]
-postgres = "0.19.9"
-parsql = { path = "../../", features = ["postgres"] }
