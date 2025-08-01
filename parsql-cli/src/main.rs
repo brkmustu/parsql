@@ -7,6 +7,7 @@ use colored::Colorize;
 mod commands;
 mod config;
 mod utils;
+mod ui;
 
 use commands::migrate;
 
@@ -32,8 +33,12 @@ struct Cli {
     #[arg(short, long, global = true)]
     verbose: bool,
 
+    /// Launch interactive TUI mode
+    #[arg(short, long)]
+    interactive: bool,
+
     #[command(subcommand)]
-    command: Commands,
+    command: Option<Commands>,
 }
 
 #[derive(Subcommand)]
@@ -149,7 +154,17 @@ fn main() -> Result<()> {
         println!("{}", "================".bright_blue());
     }
     
-    match cli.command {
+    // Check if we should run in interactive mode
+    if cli.interactive || cli.command.is_none() {
+        // Launch interactive TUI
+        let database_url = cli.database_url
+            .or(config.database_url.clone());
+        
+        return ui::run_tui(database_url, config, cli.verbose);
+    }
+    
+    // Otherwise run in command mode
+    match cli.command.unwrap() {
         Commands::Migrate { action } => {
             // Some commands don't need database URL
             let needs_db = matches!(

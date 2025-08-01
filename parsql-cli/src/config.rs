@@ -43,6 +43,18 @@ pub struct DatabaseConfig {
     pub url: String,
 }
 
+impl MigrationConfig {
+    pub fn to_parsql_migrations_config(&self) -> parsql_migrations::config::MigrationConfig {
+        let mut config = parsql_migrations::config::MigrationConfig::default();
+        config.table.table_name = self.table_name.clone();
+        config.transaction_per_migration = self.transaction_per_migration;
+        config.verify_checksums = self.verify_checksums;
+        config.allow_out_of_order = self.allow_out_of_order;
+        config.auto_create_table = self.auto_create_table.unwrap_or(true);
+        config
+    }
+}
+
 impl Default for MigrationConfig {
     fn default() -> Self {
         Self {

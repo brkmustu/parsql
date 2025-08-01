@@ -1,6 +1,15 @@
 # parsql-cli
 
-Command-line interface for the parsql database toolkit and migration system.
+Command-line interface for the parsql database toolkit and migration system with interactive TUI mode.
+
+## Features
+
+- 🎨 **Interactive TUI Mode**: Beautiful terminal interface with Ratatui (Claude Code style)
+- 📋 **Command Mode**: Traditional CLI for scripts and automation
+- 🔄 **Migration Management**: Create, run, rollback, and track database migrations
+- 🗄️ **Multi-Database Support**: PostgreSQL and SQLite
+- ⚡ **Real-time Status**: Live migration status and progress tracking
+- 🎯 **Auto-completion**: Smart command suggestions in interactive mode
 
 ## Installation
 
@@ -16,6 +25,23 @@ cargo install --path .
 ```
 
 ## Quick Start
+
+### Interactive Mode (Recommended)
+
+Launch the interactive TUI:
+```bash
+parsql -i
+# or just
+parsql
+```
+
+In interactive mode:
+- Press `/` to enter command mode (Claude Code style)
+- Use arrow keys to navigate
+- Press `?` for help
+- `Ctrl+Q` to quit
+
+### Command Mode
 
 1. **Initialize a new project**:
 ```bash
@@ -62,7 +88,53 @@ You can override configuration with environment variables:
 - `PARSQL_MIGRATIONS_DIR` - Migrations directory
 - `PARSQL_CONFIG` - Path to config file
 
-## Commands
+## Interactive TUI Mode
+
+The interactive mode provides a rich terminal interface inspired by Claude Code:
+
+### Navigation
+- **Tab**: Switch between views (Migrations, Logs, Config)
+- **↑/↓** or **j/k**: Navigate lists
+- **Enter**: Select/open item
+- **ESC** or **q**: Go back
+
+### Command Input (`/` key)
+When you press `/`, a command input appears at the bottom with auto-completion:
+
+Available commands:
+- `/help` or `/h` - Show help
+- `/quit` or `/q` - Exit application
+- `/connect <url>` - Connect to database
+- `/create <name>` - Create new migration
+- `/run` - Run pending migrations
+- `/rollback <version>` - Rollback to version
+- `/status` - Show migration status
+- `/validate` - Validate migrations
+- `/list` - List migrations
+- `/logs` - Show application logs
+- `/config` - Show configuration
+- `/refresh` - Refresh data
+
+### Views
+
+#### Migration List View
+- Shows all migrations with status (Applied/Pending)
+- Color-coded for easy identification
+- Quick actions: `r` to refresh, `a` to apply all
+
+#### Migration Detail View
+- Shows SQL content of selected migration
+- Actions: `r` to run, `b` to rollback
+
+#### Logs View
+- Real-time application logs
+- Color-coded by severity
+
+#### Configuration View
+- Current database connection
+- Migration settings
+
+## Commands (CLI Mode)
 
 ### `parsql init`
 
