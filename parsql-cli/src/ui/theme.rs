@@ -30,4 +30,10 @@ impl ClaudeTheme {
     pub const COMMAND_BG: Color = Color::Rgb(30, 30, 35);        // Slightly darker for command input
     pub const SELECTION_BG: Color = Color::Rgb(59, 130, 246);    // Blue for selections
     pub const SCROLLBAR: Color = Color::Rgb(113, 113, 122);      // Dim for scrollbars
+    
+    // Aliases for common names
+    pub const BORDER: Color = Self::BORDER_PRIMARY;
+    pub const TEXT_MUTED: Color = Self::TEXT_DIM;
+    pub const SUCCESS: Color = Self::ACCENT_SUCCESS;
+    pub const WARNING: Color = Self::ACCENT_WARNING;
 }

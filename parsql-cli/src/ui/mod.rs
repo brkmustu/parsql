@@ -14,6 +14,8 @@ mod database;
 mod migration_creator;
 mod migration_loader;
 mod migration_executor;
+mod migration_viewer;
+mod migration_content_view;
 
 use anyhow::Result;
 use crossterm::{

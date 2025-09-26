@@ -79,6 +79,16 @@ impl CommandInput {
                 "/validate [--check-gaps] [--verify-checksums]"
             ),
             CommandSuggestion::new(
+                "/view",
+                "View migration SQL content",
+                "/view <version> [up|down]"
+            ),
+            CommandSuggestion::new(
+                "/edit",
+                "Edit migration file in external editor",
+                "/edit <version> [up|down]"
+            ),
+            CommandSuggestion::new(
                 "/list",
                 "List migrations",
                 "/list [--pending] [--applied]"

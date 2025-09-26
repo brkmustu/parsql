@@ -22,6 +22,8 @@ use super::database::DatabaseInfo;
 use super::migration_creator::MigrationCreator;
 use super::migration_loader::MigrationLoader;
 use super::migration_executor::MigrationExecutor;
+use super::migration_viewer::{MigrationViewer, MigrationFileType};
+use super::migration_content_view::MigrationContentView;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppMode {
@@ -46,6 +48,7 @@ pub struct App {
     pub migration_detail: MigrationDetailView,
     pub help_view: HelpView,
     pub output_stream: OutputStreamWidget,
+    pub migration_content_view: MigrationContentView,
     pub database_url: Option<String>,
     pub config: Config,
     pub verbose: bool,
@@ -71,6 +74,7 @@ impl App {
             migration_detail: MigrationDetailView::new(),
             help_view: HelpView::new(),
             output_stream: OutputStreamWidget::new(1000),
+            migration_content_view: MigrationContentView::new(),
             database_url,
             config,
             verbose,
@@ -152,35 +156,62 @@ impl App {
     }
     
     fn handle_normal_mode_key(&mut self, key: KeyEvent) -> Result<bool> {
-        match key.code {
-            KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                self.should_quit = true;
-                Ok(true)
+        // Check if migration content view is visible
+        if self.migration_content_view.is_visible() {
+            match key.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    self.migration_content_view.hide();
+                    Ok(false)
+                }
+                KeyCode::Up | KeyCode::Char('k') => {
+                    self.migration_content_view.scroll_up();
+                    Ok(false)
+                }
+                KeyCode::Down | KeyCode::Char('j') => {
+                    self.migration_content_view.scroll_down(20); // Approximate viewport height
+                    Ok(false)
+                }
+                KeyCode::PageUp => {
+                    self.migration_content_view.scroll_page_up(20);
+                    Ok(false)
+                }
+                KeyCode::PageDown => {
+                    self.migration_content_view.scroll_page_down(20);
+                    Ok(false)
+                }
+                _ => Ok(false)
             }
-            KeyCode::Char('/') => {
-                self.mode = AppMode::CommandInput;
-                self.command_input.clear();
-                // Initialize with '/' character
-                self.command_input.handle_key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
-                Ok(false)
-            }
-            KeyCode::Char('?') => {
-                self.mode = AppMode::Help;
-                Ok(false)
-            }
-            KeyCode::Tab => {
-                // Switch between views
-                self.view = match self.view {
-                    View::MigrationList => View::Logs,
-                    View::MigrationDetail { .. } => View::MigrationList,
-                    View::DatabaseConfig => View::MigrationList,
-                    View::Logs => View::MigrationList,
-                };
-                Ok(false)
-            }
-            _ => {
-                // Pass key to current view
-                self.handle_view_key(key)
+        } else {
+            match key.code {
+                KeyCode::Char('q') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                    self.should_quit = true;
+                    Ok(true)
+                }
+                KeyCode::Char('/') => {
+                    self.mode = AppMode::CommandInput;
+                    self.command_input.clear();
+                    // Initialize with '/' character
+                    self.command_input.handle_key(KeyEvent::new(KeyCode::Char('/'), KeyModifiers::NONE));
+                    Ok(false)
+                }
+                KeyCode::Char('?') => {
+                    self.mode = AppMode::Help;
+                    Ok(false)
+                }
+                KeyCode::Tab => {
+                    // Switch between views
+                    self.view = match self.view {
+                        View::MigrationList => View::Logs,
+                        View::MigrationDetail { .. } => View::MigrationList,
+                        View::DatabaseConfig => View::MigrationList,
+                        View::Logs => View::MigrationList,
+                    };
+                    Ok(false)
+                }
+                _ => {
+                    // Pass key to current view
+                    self.handle_view_key(key)
+                }
             }
         }
     }
@@ -424,6 +455,70 @@ impl App {
             "/logs" => {
                 self.view = View::Logs;
             }
+            "/view" => {
+                if parts.len() > 1 {
+                    if let Ok(version) = parts[1].parse::<i64>() {
+                        let file_type = if parts.len() > 2 && parts[2] == "down" {
+                            MigrationFileType::Down
+                        } else {
+                            MigrationFileType::Up
+                        };
+                        
+                        let migrations_dir = std::path::PathBuf::from(&self.config.migrations.directory);
+                        let viewer = MigrationViewer::new(migrations_dir);
+                        
+                        match viewer.view_migration(version, file_type, &mut self.output_stream) {
+                            Ok(content) => {
+                                let title = format!("Migration {} ({})", version, if matches!(file_type, MigrationFileType::Up) { "up" } else { "down" });
+                                self.migration_content_view.show_content(title, content);
+                            }
+                            Err(e) => {
+                                self.output_stream.add_error(format!("Failed to view migration: {}", e));
+                                self.add_message(format!("Failed to view migration: {}", e), MessageType::Error);
+                            }
+                        }
+                    } else {
+                        self.output_stream.add_error("Invalid version number".to_string());
+                    }
+                } else {
+                    self.output_stream.add_error("Usage: /view <version> [up|down]".to_string());
+                    self.add_message("Usage: /view <version> [up|down]".to_string(), MessageType::Error);
+                }
+            }
+            "/edit" => {
+                if parts.len() > 1 {
+                    if let Ok(version) = parts[1].parse::<i64>() {
+                        let file_type = if parts.len() > 2 && parts[2] == "down" {
+                            MigrationFileType::Down
+                        } else {
+                            MigrationFileType::Up
+                        };
+                        
+                        let migrations_dir = std::path::PathBuf::from(&self.config.migrations.directory);
+                        let viewer = MigrationViewer::new(migrations_dir);
+                        
+                        self.output_stream.add_info("Launching editor...".to_string());
+                        
+                        // Note: This will block the TUI until editor closes
+                        // In a real implementation, you might want to save state and restore after
+                        match viewer.edit_migration(version, file_type, &mut self.output_stream) {
+                            Ok(_) => {
+                                self.output_stream.add_success("Editor closed".to_string());
+                                self.add_message("Migration edited successfully".to_string(), MessageType::Success);
+                            }
+                            Err(e) => {
+                                self.output_stream.add_error(format!("Failed to edit migration: {}", e));
+                                self.add_message(format!("Failed to edit migration: {}", e), MessageType::Error);
+                            }
+                        }
+                    } else {
+                        self.output_stream.add_error("Invalid version number".to_string());
+                    }
+                } else {
+                    self.output_stream.add_error("Usage: /edit <version> [up|down]".to_string());
+                    self.add_message("Usage: /edit <version> [up|down]".to_string(), MessageType::Error);
+                }
+            }
             _ => {
                 self.output_stream.add_error(format!("Unknown command: {}", parts[0]));
                 self.add_message(format!("Unknown command: {}", parts[0]), MessageType::Error);
@@ -555,6 +650,12 @@ impl App {
         if self.mode == AppMode::Help {
             self.help_view.render(f, f.area());
         }
+        
+        // Render migration content view if visible
+        if self.migration_content_view.is_visible() {
+            let area = centered_rect(80, 80, f.area());
+            self.migration_content_view.render(f, area);
+        }
     }
     
     fn render_messages(&self, f: &mut Frame, area: Rect) {
@@ -605,4 +706,25 @@ impl App {
         
         f.render_widget(paragraph, area);
     }
+}
+
+/// Helper function to create a centered rect
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
 }
