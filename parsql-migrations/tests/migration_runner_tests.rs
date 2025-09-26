@@ -46,7 +46,10 @@ fn test_skip_already_applied_migrations() {
         execution_time_ms: Some(50),
     });
     
-    let mut runner = MigrationRunner::new();
+    // Create a runner that allows out-of-order execution
+    let mut runner = MigrationRunner::with_config(
+        MigrationConfig::new().allow_out_of_order(true)
+    );
     let migrations = create_test_migrations();
     for migration in migrations {
         runner.add_migration(migration);
@@ -63,17 +66,21 @@ fn test_skip_already_applied_migrations() {
 
 #[test]
 fn test_migration_failure_stops_execution() {
-    let mut conn = TestConnection::new().with_failure();
-    let mut runner = MigrationRunner::new();
+    let mut conn = TestConnection::new().with_migration_failure_only();
+    let config = MigrationConfig::new()
+        .with_auto_create_table(false)
+        .with_transactions(false);
+    let mut runner = MigrationRunner::with_config(config);
     
     let migrations = create_test_migrations();
     for migration in migrations {
         runner.add_migration(migration);
     }
     
-    // Run migrations - should fail
-    let report = runner.run(&mut conn).unwrap();
+    // Run migrations - should return a report with failures
+    let report = runner.run(&mut conn).expect("Runner should succeed even when migrations fail");
     
+    // First migration should fail, and execution should stop
     assert_eq!(report.successful_count(), 0);
     assert_eq!(report.failed_count(), 1);
     assert!(!report.is_success());

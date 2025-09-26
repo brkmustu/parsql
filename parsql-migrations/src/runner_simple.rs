@@ -287,9 +287,19 @@ impl MigrationRunner {
             }
         } else {
             // Run without transaction
-            migration.up(conn)?;
-            self.record_migration(conn, migration, start.elapsed().as_millis() as i64)?;
-            Ok(())
+            let migration_result = migration.up(conn);
+            let record_result = if migration_result.is_ok() {
+                self.record_migration(conn, migration, start.elapsed().as_millis() as i64)
+            } else {
+                Ok(())
+            };
+            
+            if migration_result.is_ok() && record_result.is_ok() {
+                Ok(())
+            } else {
+                // Return the first error
+                migration_result.and(record_result)
+            }
         };
         
         let execution_time = start.elapsed().as_millis() as i64;

@@ -50,6 +50,7 @@ pub struct TestConnection {
     migrations: Arc<Mutex<HashMap<i64, MigrationRecord>>>,
     in_transaction: bool,
     should_fail: bool,
+    fail_migrations_only: bool, // New field for selective failure
 }
 
 impl TestConnection {
@@ -59,11 +60,17 @@ impl TestConnection {
             migrations: Arc::new(Mutex::new(HashMap::new())),
             in_transaction: false,
             should_fail: false,
+            fail_migrations_only: false,
         }
     }
     
     pub fn with_failure(mut self) -> Self {
         self.should_fail = true;
+        self
+    }
+    
+    pub fn with_migration_failure_only(mut self) -> Self {
+        self.fail_migrations_only = true;
         self
     }
     
@@ -85,6 +92,11 @@ impl MigrationConnection for TestConnection {
     fn execute(&mut self, sql: &str) -> Result<(), MigrationError> {
         if self.should_fail {
             return Err(MigrationError::database("Test failure"));
+        }
+        
+        // Fail only on migration SQL (CREATE TABLE, ALTER TABLE, DROP TABLE)
+        if self.fail_migrations_only && (sql.contains("CREATE TABLE") || sql.contains("ALTER TABLE") || sql.contains("DROP TABLE")) {
+            return Err(MigrationError::database("Test migration failure"));
         }
         
         self.executed_queries.lock().unwrap().push(sql.to_string());
@@ -132,6 +144,9 @@ impl MigrationConnection for TestConnection {
     }
     
     fn query_migrations(&mut self, _table_name: &str) -> Result<Vec<MigrationRecord>, MigrationError> {
+        if self.should_fail {
+            return Err(MigrationError::database("Test failure"));
+        }
         Ok(self.migrations.lock().unwrap().values().cloned().collect())
     }
 }

@@ -137,7 +137,7 @@ impl OutputStreamWidget {
         let items: Vec<ListItem> = self.lines
             .iter()
             .map(|line| {
-                let (style, prefix_style) = match line.line_type {
+                let (style, _prefix_style) = match line.line_type {
                     OutputLineType::Command => (
                         Style::default().fg(ClaudeTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD),
                         Style::default().fg(ClaudeTheme::ACCENT_PRIMARY),

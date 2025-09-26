@@ -125,7 +125,7 @@ impl MigrationContentView {
         f.render_widget(help_span, Rect { x: help_x, y: area.y + area.height - 1, width: help_text.len() as u16, height: 1 });
     }
     
-    fn highlight_sql_line(&self, line: &str, line_number: usize) -> Line {
+    fn highlight_sql_line<'a>(&self, line: &'a str, line_number: usize) -> Line<'a> {
         let mut spans = vec![];
         
         // Add line number

@@ -658,7 +658,7 @@ impl App {
         }
     }
     
-    fn render_messages(&self, f: &mut Frame, area: Rect) {
+    fn render_messages(&self, _f: &mut Frame, _area: Rect) {
         // Removed - using output stream instead
     }
     

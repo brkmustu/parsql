@@ -3,13 +3,13 @@
 use clap::{Parser, Subcommand};
 use anyhow::{Context, Result};
 use colored::Colorize;
-
 mod commands;
 mod config;
 mod utils;
 mod ui;
 
 use commands::migrate;
+use parsql_cli::MigrateCommands;
 
 /// Parsql database toolkit CLI
 #[derive(Parser)]
@@ -58,87 +58,6 @@ enum Commands {
     },
 }
 
-#[derive(Subcommand)]
-enum MigrateCommands {
-    /// Create a new migration
-    #[command(alias = "c")]
-    Create {
-        /// Migration name (e.g., "create_users_table")
-        name: String,
-        
-        /// Migration type
-        #[arg(short = 't', long, default_value = "sql", value_parser = ["sql", "rust"])]
-        migration_type: String,
-    },
-    
-    /// Run pending migrations
-    #[command(alias = "r")]
-    Run {
-        /// Target database URL (overrides global --database-url)
-        #[arg(long)]
-        database_url: Option<String>,
-        
-        /// Dry run - show what would be executed without applying
-        #[arg(long)]
-        dry_run: bool,
-        
-        /// Target version (run up to this version)
-        #[arg(long)]
-        target: Option<i64>,
-    },
-    
-    /// Rollback migrations
-    #[command(alias = "b")]
-    Rollback {
-        /// Target version to rollback to
-        #[arg(long, short = 't')]
-        to: i64,
-        
-        /// Target database URL (overrides global --database-url)
-        #[arg(long)]
-        database_url: Option<String>,
-        
-        /// Dry run - show what would be rolled back
-        #[arg(long)]
-        dry_run: bool,
-    },
-    
-    /// Show migration status
-    #[command(alias = "s")]
-    Status {
-        /// Target database URL (overrides global --database-url)
-        #[arg(long)]
-        database_url: Option<String>,
-        
-        /// Show detailed information
-        #[arg(long)]
-        detailed: bool,
-    },
-    
-    /// Validate migrations
-    #[command(alias = "v")]
-    Validate {
-        /// Check for version gaps
-        #[arg(long, default_value_t = true)]
-        check_gaps: bool,
-        
-        /// Verify checksums of applied migrations
-        #[arg(long)]
-        verify_checksums: bool,
-    },
-    
-    /// List available migrations
-    #[command(alias = "l")]
-    List {
-        /// Show only pending migrations
-        #[arg(long)]
-        pending: bool,
-        
-        /// Show only applied migrations
-        #[arg(long)]
-        applied: bool,
-    },
-}
 
 fn main() -> Result<()> {
     let cli = Cli::parse();

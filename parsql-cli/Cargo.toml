@@ -9,6 +9,10 @@ repository.workspace = true
 version.workspace = true
 license.workspace = true
 
+[lib]
+name = "parsql_cli"
+path = "src/lib.rs"
+
 [[bin]]
 name = "parsql"
 path = "src/main.rs"
@@ -50,6 +54,10 @@ glob = "0.3"
 
 # Cryptography
 sha2 = "0.10"
+
+[dev-dependencies]
+tempfile = "3.10"
+tokio-test = "0.4"
 
 [features]
 default = ["postgres", "sqlite"]
