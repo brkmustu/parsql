@@ -8,20 +8,36 @@ Deneyimsel bir sql yardımcı küfesidir. Bu bir ORM aracı değildir. Amaç sql
 
 ## Özellikler
 
-- Otomatik SQL sorgu oluşturma
-- Güvenli parametre yönetimi
-- Birden fazla veritabanı sistemi için destek (PostgreSQL, SQLite, Tokio PostgreSQL, Deadpool PostgreSQL)
-- Tip güvenliği olan veritabanı işlemleri
-- SQL Injection saldırılarına karşı otomatik koruma
-- **Yeni (0.3.3):** Sayfalama (pagination) için tam destek: `limit` ve `offset` öznitelikleri ile verimli sayfalama yapabilirsiniz
-- `Queryable` türetme özniteliği, tablo adı, where ifadesi, select ifadesi, group by, having, order by, limit ve offset ifadeleri için destek sağlar.
-- `Insertable` türetme özniteliği, tabloya özgü INSERT ifadeleri oluşturur.
-- `Updateable` türetme özniteliği, tabloya özgü UPDATE ifadeleri oluşturur.
-- `Deletable` türetme özniteliği, tabloya özgü DELETE ifadeleri oluşturur.
-- `SqlParams` türetme özniteliği, yapının SQL parametreleri için kullanılmasını sağlar.
-- `UpdateParams` türetme özniteliği, yapının UPDATE ifadeleri için kullanılmasını sağlar.
-- `FromRow` türetme özniteliği, veritabanı satırlarının yapıya dönüştürülmesini sağlar.
-- **Yeni (0.3.3):** SQL trace kayıtları için `PARSQL_TRACE` çevre değişkeni desteği eklendi.
+### 🚀 Core Library
+- **Otomatik SQL sorgu oluşturma** - Struct'lardan SQL generate etme
+- **Güvenli parametre yönetimi** - SQL Injection saldırılarına karşı otomatik koruma
+- **Multi-database destek** - PostgreSQL, SQLite, Tokio PostgreSQL, Deadpool PostgreSQL
+- **Tip güvenliği** - Compile-time type safety
+- **Sayfalama desteği** - `limit` ve `offset` öznitelikleri ile verimli pagination
+
+### 🎯 Derive Macros
+- `#[derive(Queryable)]` - SELECT işlemleri (where, select, group by, having, order by, limit, offset)
+- `#[derive(Insertable)]` - INSERT işlemleri
+- `#[derive(Updateable)]` - UPDATE işlemleri  
+- `#[derive(Deletable)]` - DELETE işlemleri
+- `#[derive(FromRow)]` - Row-to-struct conversion
+- `#[derive(SqlParams, UpdateParams)]` - Parameter handling
+
+### 🛠️ CLI ve Migration Sistemi (v0.5.0+)
+- **🎨 Interactive TUI** - Modern ve kullanıcı dostu terminal arayüzü
+- **📋 Command Line Interface** - Automation ve scripting için
+- **🔄 Migration Management** - Create, run, rollback, status tracking
+- **✅ Transaction Safety** - Her migration kendi transaction'ında
+- **🔍 Checksum Verification** - Modified migration detection
+- **🚫 Gap Detection** - Missing migration protection
+- **📊 Real-time Status** - Live migration tracking
+- **🎯 Smart Auto-completion** - TUI'de akıllı komut tamamlama
+
+### 🔧 Advanced Features
+- **SQL trace logging** - `PARSQL_TRACE` environment variable
+- **Extension methods** - Pool ve Transaction nesneleri üzerinde direct usage
+- **Prelude module** - Tek import ile tüm gerekli traits
+- **Async support** - Tokio ve Deadpool integration
 
 ## Ne İşe Yarar?
 
@@ -380,28 +396,302 @@ runner.add_migration(Box::new(CreateUsersTable));
 runner.run(&mut conn)?;
 ```
 
-### CLI Aracı
+## CLI Aracı ve Migration Sistemi
 
-Parsql CLI ile migration yönetimi kolaylaşır:
+Parsql CLI, migration yönetimi için gelişmiş komut satırı aracı ve interaktif TUI (Terminal User Interface) sunar.
+
+### Kurulum
 
 ```bash
-# Kurulum
 cargo install parsql-cli
+```
 
+### İki Kullanım Modu
+
+#### 1. Interactive TUI Mode (Önerilen)
+
+```bash
+# Interaktif TUI başlatma
+parsql
+# veya
+parsql -i
+```
+
+**TUI Özellikleri:**
+- 🎨 **Modern ve sezgisel terminal arayüzü**
+- 📊 **Gerçek zamanlı migration durumu görüntüleme**
+- 🔄 **Canlı log takibi ve progress göstergeleri**
+- ⌨️ **Akıllı komut tamamlama**
+- 🎯 **Kolay navigasyon ve hızlı aksiyonlar**
+
+**Navigasyon:**
+- `Tab`: Görünümler arası geçiş (Migrations, Logs, Config)
+- `↑/↓` veya `j/k`: Liste navigasyonu
+- `Enter`: Seçim/açma
+- `ESC` veya `q`: Geri gitme
+- `/`: Komut modu (command palette)
+
+**TUI Komutları (`/` tuşu ile):**
+- `/help` - Yardım göster
+- `/connect <url>` - Veritabanına bağlan
+- `/create <name>` - Yeni migration oluştur
+- `/run` - Bekleyen migration'ları çalıştır
+- `/rollback <version>` - Belirtilen versiyona geri al
+- `/status` - Migration durumunu göster
+- `/validate` - Migration'ları doğrula
+- `/list` - Migration listesi
+- `/config` - Konfigürasyon görüntüle
+- `/refresh` - Veriyi yenile
+- `/quit` - Çıkış
+
+**TUI Görünümleri:**
+
+1. **Migration List View (Ana Görünüm)**
+   - Tüm migration'ları durum ile listeler
+   - ✅ Applied (Uygulandı) - Yeşil
+   - ⏳ Pending (Bekliyor) - Sarı  
+   - ❌ Failed (Başarısız) - Kırmızı
+   - Hızlı aksiyonlar: `r` (yenile), `a` (tümünü uygula)
+
+2. **Migration Detail View**
+   - Seçili migration'ın SQL içeriğini gösterir
+   - Syntax highlighting ile kolay okuma
+   - Aksiyonlar: `r` (çalıştır), `b` (geri al)
+   - Satır numaraları ve dosya bilgisi
+
+3. **Migration Content Viewer**
+   - Up/down migration dosyalarını görüntüleme
+   - SQL syntax highlighting
+   - Dosya editörü entegrasyonu
+
+4. **Logs View**
+   - Gerçek zamanlı uygulama logları
+   - Seviye bazlı renk kodlama:
+     - 🔵 INFO - Mavi
+     - 🟡 WARN - Sarı
+     - 🔴 ERROR - Kırmızı
+     - 🟢 SUCCESS - Yeşil
+
+5. **Configuration View**
+   - Mevcut veritabanı bağlantısı
+   - Migration ayarları
+   - Dosya yolları ve konfigürasyon detayları
+
+6. **Database Connection View**
+   - Bağlantı durumu görüntüleme
+   - Veritabanı bilgileri (tip, versiyon, tablo sayısı)
+   - Bağlantı testi ve durum kontrolü
+
+#### 2. Command Line Mode
+
+```bash
 # Proje başlatma
 parsql init
 
 # Migration oluşturma
-parsql migrate create "create users table"
+parsql migrate create "create users table" --migration-type sql
 
 # Migration çalıştırma
-parsql migrate run
+parsql migrate run --database-url postgresql://localhost/mydb
 
 # Durum kontrolü
 parsql migrate status --detailed
 
 # Geri alma
 parsql migrate rollback --to 20240101000000
+
+# Doğrulama
+parsql migrate validate --verify-checksums
+
+# Migration listesi
+parsql migrate list --pending
+```
+
+### Konfigürasyon
+
+`parsql.toml` dosyası oluşturun:
+
+```toml
+[database]
+url = "postgresql://user:pass@localhost/dbname"
+# veya SQLite için:
+# url = "sqlite:app.db"
+
+[migrations]
+directory = "migrations"
+table_name = "schema_migrations"
+verify_checksums = true
+allow_out_of_order = false
+transaction_per_migration = true
+```
+
+### Çevre Değişkenleri
+
+```bash
+export DATABASE_URL="postgresql://localhost/mydb"
+export PARSQL_MIGRATIONS_DIR="custom_migrations"
+export PARSQL_CONFIG="config/parsql.toml"
+```
+
+### Praktik Kullanım Senaryoları
+
+#### Senaryo 1: Blog Projesi (PostgreSQL)
+
+```bash
+# 1. Yeni blog projesi başlat
+parsql init --database-url postgresql://localhost/blog
+
+# 2. İlk migration: Users tablosu
+parsql migrate create "create_users_table"
+# migrations/20240101120000_create_users_table.up.sql oluşturuldu
+
+# 3. SQL dosyasını düzenle:
+cat > migrations/20240101120000_create_users_table.up.sql << EOF
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_username ON users(username);
+EOF
+
+# 4. Down migration:
+cat > migrations/20240101120000_create_users_table.down.sql << EOF
+DROP TABLE IF EXISTS users;
+EOF
+
+# 5. Migration'ı çalıştır
+parsql migrate run
+
+# 6. Posts tablosu ekle
+parsql migrate create "create_posts_table"
+cat > migrations/20240101130000_create_posts_table.up.sql << EOF
+CREATE TABLE posts (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    content TEXT NOT NULL,
+    published BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_posts_user_id ON posts(user_id);
+CREATE INDEX idx_posts_published ON posts(published);
+EOF
+
+# 7. Tüm migration'ları çalıştır
+parsql migrate run
+
+# 8. Durum kontrolü
+parsql migrate status --detailed
+```
+
+#### Senaryo 2: E-ticaret Projesi (SQLite)
+
+```bash
+# 1. E-ticaret projesi
+parsql init --database-url sqlite:ecommerce.db
+
+# 2. İnteraktif modda çalış
+parsql -i
+
+# TUI'de yapılacaklar:
+# - Tab ile Migration List view'a git
+# - / tuşuna basıp komut modunu aç
+# - /create products_table yazıp Enter
+# - Migration dosyası düzenledikten sonra:
+# - /run komutu ile migration'ı çalıştır
+# - Tab ile Logs view'a geçip sonuçları gör
+```
+
+#### Senaryo 3: Microservice Migration (Docker)
+
+```bash
+# 1. Docker container içinde migration
+docker run --rm -v $(pwd):/app -w /app \
+  --network host \
+  parsql-cli:latest migrate run \
+  --database-url postgresql://postgres:password@localhost:5432/microservice
+
+# 2. CI/CD pipeline integration
+parsql migrate validate --verify-checksums
+if [ $? -eq 0 ]; then
+  parsql migrate run --database-url $DATABASE_URL
+  parsql migrate status --detailed
+fi
+
+# 3. Production deployment check
+parsql migrate status --database-url $PROD_DATABASE_URL
+parsql migrate run --dry-run --database-url $PROD_DATABASE_URL
+```
+
+#### Senaryo 4: Development Workflow
+
+```bash
+# 1. Geliştirme ortamı hazırlığı
+export DATABASE_URL="postgresql://dev:dev@localhost:5432/myapp_dev"
+parsql migrate run
+
+# 2. Yeni feature için migration
+git checkout -b feature/user-profiles
+parsql migrate create "add_user_profiles"
+
+# 3. Migration geliştirme ve test
+parsql -i  # TUI'de SQL dosyasını düzenle ve test et
+
+# 4. Test veritabanında deneme
+export DATABASE_URL="postgresql://test:test@localhost:5432/myapp_test"
+parsql migrate run
+
+# 5. Production'a hazırlık
+parsql migrate validate --verify-checksums --check-gaps
+parsql migrate run --dry-run --database-url $STAGING_DATABASE_URL
+
+# 6. Rollback planı
+parsql migrate status --detailed
+# Eğer bir problem olursa:
+# parsql migrate rollback --to <previous_version>
+```
+
+#### Senaryo 5: TUI'de İnteraktif Kullanım
+
+```bash
+# TUI başlat
+parsql -i
+
+# TUI Workflow:
+# 1. Tab ile farklı görünümler arasında gezin
+# 2. / tuşu ile komut modunu açın
+# 3. /connect postgresql://localhost/mydb - veritabanına bağlanın
+# 4. /create "table_name" - yeni migration oluşturun
+# 5. Enter ile migration'ı seçin ve SQL içeriğini görün
+# 6. /run - migration'ı çalıştırın
+# 7. Tab ile Logs view'a geçin ve sonuçları takip edin
+# 8. /status - genel durumu kontrol edin
+# 9. Ctrl+Q ile çıkın
+```
+
+### Troubleshooting
+
+```bash
+# Migration başarısız oldu mu?
+parsql migrate status --detailed
+parsql migrate rollback --to <last_good_version>
+
+# Checksum hatası var mı?
+parsql migrate validate --verify-checksums
+
+# Connection sorunları
+parsql -i  # TUI'de /connect komutu ile test edin
+
+# Log takibi
+parsql -i  # TUI'de Logs view'ını kullanın
 ```
 
 ## Detaylı Dökümantasyon
