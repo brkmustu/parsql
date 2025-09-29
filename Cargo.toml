@@ -53,6 +53,7 @@ deadpool-postgres = [
 
 [workspace.dependencies]
 parsql-macros = { path = "parsql-macros", version = "0.5.0" }
+parsql-migrations = { path = "parsql-migrations", version = "0.5.0" }
 parsql-sqlite = { path = "parsql-sqlite", version = "0.5.0" }
 parsql-postgres = { path = "parsql-postgres", version = "0.5.0" }
 parsql-tokio-postgres = { path = "parsql-tokio-postgres", version = "0.5.0" }
