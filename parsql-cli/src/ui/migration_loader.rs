@@ -77,8 +77,8 @@ impl MigrationLoader {
         Ok(migrations)
     }
     
-    /// Get the status of all migrations
-    pub async fn get_migration_status(&self, db_url: &str) -> Result<Vec<MigrationStatus>> {
+    /// Get the status of all migrations (blocking version for TUI)
+    pub fn get_migration_status_blocking(&self, db_url: &str) -> Result<Vec<MigrationStatus>> {
         let migrations = self.load_sql_migrations()?;
         let mut statuses = Vec::new();
         
@@ -116,11 +116,30 @@ impl MigrationLoader {
                 }
             }
         } else if db_url.starts_with("postgresql://") || db_url.starts_with("postgres://") {
-            // TODO: Implement PostgreSQL support
-            return Err(anyhow::anyhow!("PostgreSQL support not yet implemented in CLI"));
+            // Get applied migrations from PostgreSQL database
+            let applied = self.get_applied_migrations_postgres(db_url)?;
+            
+            for migration in migrations {
+                let applied_info = applied.iter().find(|(v, _)| *v == migration.version);
+                let is_applied = applied_info.is_some();
+                
+                statuses.push(MigrationStatus {
+                    version: migration.version,
+                    name: migration.name,
+                    applied: is_applied,
+                    applied_at: applied_info.map(|(_, timestamp)| timestamp.clone()),
+                });
+            }
         }
         
         Ok(statuses)
+    }
+    
+    /// Get the status of all migrations (async version for CLI)
+    pub async fn get_migration_status(&self, db_url: &str) -> Result<Vec<MigrationStatus>> {
+        // For now, just call the blocking version
+        // In the future, this could use proper async PostgreSQL
+        self.get_migration_status_blocking(db_url)
     }
     
     /// Get applied migrations from SQLite database
@@ -151,6 +170,46 @@ impl MigrationLoader {
         }
         
         Ok(applied)
+    }
+    
+    /// Get applied migrations from PostgreSQL database
+    #[cfg(feature = "postgres")]
+    fn get_applied_migrations_postgres(&self, db_url: &str) -> Result<Vec<(i64, String)>> {
+        use postgres::{Client, NoTls};
+        
+        let mut client = Client::connect(db_url, NoTls)
+            .context("Failed to connect to PostgreSQL database")?;
+        
+        let mut applied = Vec::new();
+        
+        // Check if migrations table exists
+        let table_exists: bool = client.query_one(
+            "SELECT EXISTS(SELECT 1 FROM information_schema.tables WHERE table_name = $1)",
+            &[&self.config.table.table_name],
+        )?.get(0);
+        
+        if table_exists {
+            let rows = client.query(
+                &format!("SELECT version, applied_at FROM {} ORDER BY version", self.config.table.table_name),
+                &[],
+            )?;
+            
+            for row in rows {
+                let version: i64 = row.get(0);
+                let applied_at: std::time::SystemTime = row.get(1);
+                let datetime: chrono::DateTime<chrono::Utc> = applied_at.into();
+                let timestamp = datetime.format("%Y-%m-%d %H:%M:%S").to_string();
+                applied.push((version, timestamp));
+            }
+        }
+        
+        Ok(applied)
+    }
+    
+    /// Get applied migrations from PostgreSQL database (fallback when postgres feature is disabled)
+    #[cfg(not(feature = "postgres"))]
+    fn get_applied_migrations_postgres(&self, _db_url: &str) -> Result<Vec<(i64, String)>> {
+        Err(anyhow::anyhow!("PostgreSQL support not compiled in. Enable 'postgres' feature"))
     }
 }
 

@@ -117,4 +117,11 @@ impl Config {
         
         config
     }
+
+    /// Create a default config with custom migrations directory (useful for testing)
+    pub fn default_with_directory(directory: &str) -> Self {
+        let mut config = Config::default();
+        config.migrations.directory = directory.to_string();
+        config
+    }
 }

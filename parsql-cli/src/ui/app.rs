@@ -17,7 +17,7 @@ use super::migration_list::MigrationListView;
 use super::migration_detail::MigrationDetailView;
 use super::help::HelpView;
 use super::output_stream::OutputStreamWidget;
-use super::theme::ClaudeTheme;
+use super::theme::ModernTheme;
 use super::database::DatabaseInfo;
 use super::migration_creator::MigrationCreator;
 use super::migration_loader::MigrationLoader;
@@ -103,11 +103,7 @@ impl App {
                     self.output_stream.add_info(format!("Found {} migration files", sql_migrations.len()));
                     
                     // Get migration status (blocking for now)
-                    let rt = tokio::runtime::Builder::new_current_thread()
-                        .enable_all()
-                        .build()
-                        .unwrap();
-                    match rt.block_on(loader.get_migration_status(db_url)) {
+                    match loader.get_migration_status_blocking(db_url) {
                         Ok(statuses) => {
                             // Update migration list view
                             self.migration_list.set_migrations(statuses);
@@ -389,8 +385,20 @@ impl App {
                                     self.add_message(format!("Migration failed: {}", e), MessageType::Error);
                                 }
                             }
+                        } else if db_url.starts_with("postgresql://") || db_url.starts_with("postgres://") {
+                            match executor.run_postgres_migrations(db_url, sql_migrations, &mut self.output_stream) {
+                                Ok(count) => {
+                                    self.output_stream.add_success(format!("Successfully ran {} migrations", count));
+                                    self.add_message(format!("Ran {} migrations", count), MessageType::Success);
+                                    self.refresh_data(); // Refresh to show updated status
+                                }
+                                Err(e) => {
+                                    self.output_stream.add_error(format!("Migration failed: {}", e));
+                                    self.add_message(format!("Migration failed: {}", e), MessageType::Error);
+                                }
+                            }
                         } else {
-                            self.output_stream.add_error("PostgreSQL support not yet implemented".to_string());
+                            self.output_stream.add_error("Unsupported database URL format".to_string());
                         }
                     }
                     Err(e) => {
@@ -431,8 +439,20 @@ impl App {
                                             self.add_message(format!("Rollback failed: {}", e), MessageType::Error);
                                         }
                                     }
+                                } else if db_url.starts_with("postgresql://") || db_url.starts_with("postgres://") {
+                                    match executor.rollback_postgres(db_url, target_version, sql_migrations, &mut self.output_stream) {
+                                        Ok(count) => {
+                                            self.output_stream.add_success(format!("Successfully rolled back {} migrations", count));
+                                            self.add_message(format!("Rolled back {} migrations", count), MessageType::Success);
+                                            self.refresh_data(); // Refresh to show updated status
+                                        }
+                                        Err(e) => {
+                                            self.output_stream.add_error(format!("Rollback failed: {}", e));
+                                            self.add_message(format!("Rollback failed: {}", e), MessageType::Error);
+                                        }
+                                    }
                                 } else {
-                                    self.output_stream.add_error("PostgreSQL support not yet implemented".to_string());
+                                    self.output_stream.add_error("Unsupported database URL format".to_string());
                                 }
                             }
                             Err(e) => {
@@ -595,7 +615,7 @@ impl App {
     pub fn draw(&mut self, f: &mut Frame) {
         // Set background color
         f.render_widget(
-            Block::default().style(Style::default().bg(ClaudeTheme::BG_PRIMARY)),
+            Block::default().style(Style::default().bg(ModernTheme::BG_PRIMARY)),
             f.area(),
         );
         

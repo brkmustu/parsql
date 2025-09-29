@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, Cell, Row, Table, TableState},
     Frame,
 };
-use crate::ui::theme::ClaudeTheme;
+use crate::ui::theme::ModernTheme;
 use crate::ui::migration_loader::MigrationStatus;
 
 #[derive(Debug, Clone)]
@@ -95,7 +95,7 @@ impl MigrationListView {
     pub fn render(&mut self, f: &mut Frame, area: Rect) {
         let header_cells = ["Version", "Name", "Status", "Applied At", "Checksum"]
             .iter()
-            .map(|h| Cell::from(*h).style(Style::default().fg(ClaudeTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD)));
+            .map(|h| Cell::from(*h).style(Style::default().fg(ModernTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD)));
         
         let header = Row::new(header_cells)
             .style(Style::default())
@@ -103,9 +103,9 @@ impl MigrationListView {
         
         let rows = self.migrations.iter().map(|migration| {
             let status = if migration.applied {
-                Cell::from("✓ Applied").style(Style::default().fg(ClaudeTheme::ACCENT_SUCCESS))
+                Cell::from("✓ Applied").style(Style::default().fg(ModernTheme::ACCENT_SUCCESS))
             } else {
-                Cell::from("⏳ Pending").style(Style::default().fg(ClaudeTheme::ACCENT_WARNING))
+                Cell::from("⏳ Pending").style(Style::default().fg(ModernTheme::ACCENT_WARNING))
             };
             
             Row::new(vec![
@@ -130,11 +130,11 @@ impl MigrationListView {
             .header(header)
             .block(Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(ClaudeTheme::BORDER_PRIMARY))
+                .border_style(Style::default().fg(ModernTheme::BORDER_PRIMARY))
                 .title("Migrations")
-                .title_style(Style::default().fg(ClaudeTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD))
-                .style(Style::default().bg(ClaudeTheme::BG_SECONDARY)))
-            .row_highlight_style(Style::default().bg(ClaudeTheme::BG_TERTIARY).add_modifier(Modifier::BOLD))
+                .title_style(Style::default().fg(ModernTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD))
+                .style(Style::default().bg(ModernTheme::BG_SECONDARY)))
+            .row_highlight_style(Style::default().bg(ModernTheme::BG_TERTIARY).add_modifier(Modifier::BOLD))
             .highlight_symbol("▶ ");
         
         f.render_stateful_widget(table, area, &mut self.state);

@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use super::app::{AppMode, View};
-use super::theme::ClaudeTheme;
+use super::theme::ModernTheme;
 
 /// Render the application header
 pub fn render_header(f: &mut Frame, area: Rect, database_url: &Option<String>) {
@@ -43,12 +43,12 @@ pub fn render_header(f: &mut Frame, area: Rect, database_url: &Option<String>) {
         
         vec![
             Span::raw("Connected: "),
-            Span::styled(display_url, Style::default().fg(ClaudeTheme::ACCENT_SUCCESS)),
+            Span::styled(display_url, Style::default().fg(ModernTheme::ACCENT_SUCCESS)),
         ]
     } else {
         vec![
             Span::raw("Disconnected "),
-            Span::styled("(/connect to set database)", Style::default().fg(ClaudeTheme::TEXT_DIM)),
+            Span::styled("(/connect to set database)", Style::default().fg(ModernTheme::TEXT_DIM)),
         ]
     };
     
@@ -57,7 +57,7 @@ pub fn render_header(f: &mut Frame, area: Rect, database_url: &Option<String>) {
             Span::styled(
                 "Parsql CLI",
                 Style::default()
-                    .fg(ClaudeTheme::ACCENT_PRIMARY)
+                    .fg(ModernTheme::ACCENT_PRIMARY)
                     .add_modifier(Modifier::BOLD),
             ),
             Span::raw(" - "),
@@ -70,10 +70,10 @@ pub fn render_header(f: &mut Frame, area: Rect, database_url: &Option<String>) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(ClaudeTheme::BORDER_PRIMARY))
+                .border_style(Style::default().fg(ModernTheme::BORDER_PRIMARY))
                 .style(Style::default()
-                    .bg(ClaudeTheme::BG_SECONDARY)
-                    .fg(ClaudeTheme::TEXT_PRIMARY)),
+                    .bg(ModernTheme::BG_SECONDARY)
+                    .fg(ModernTheme::TEXT_PRIMARY)),
         )
         .alignment(Alignment::Center);
     
@@ -126,14 +126,14 @@ pub fn render_status_bar(f: &mut Frame, area: Rect, current_view: &View, mode: &
         Span::styled(
             format!(" {} ", mode_indicator),
             Style::default()
-                .bg(ClaudeTheme::ACCENT_PRIMARY)
-                .fg(ClaudeTheme::TEXT_PRIMARY)
+                .bg(ModernTheme::ACCENT_PRIMARY)
+                .fg(ModernTheme::TEXT_PRIMARY)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::raw(" "),
         Span::styled(
             view_indicator,
-            Style::default().fg(ClaudeTheme::ACCENT_WARNING),
+            Style::default().fg(ModernTheme::ACCENT_WARNING),
         ),
         Span::raw(" | "),
     ];
@@ -142,7 +142,7 @@ pub fn render_status_bar(f: &mut Frame, area: Rect, current_view: &View, mode: &
         spans.push(Span::styled(
             key,
             Style::default()
-                .fg(ClaudeTheme::ACCENT_INFO)
+                .fg(ModernTheme::ACCENT_INFO)
                 .add_modifier(Modifier::BOLD),
         ));
         spans.push(Span::raw(desc));
@@ -153,10 +153,10 @@ pub fn render_status_bar(f: &mut Frame, area: Rect, current_view: &View, mode: &
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(ClaudeTheme::BORDER_PRIMARY))
+                .border_style(Style::default().fg(ModernTheme::BORDER_PRIMARY))
                 .style(Style::default()
-                    .bg(ClaudeTheme::BG_SECONDARY)
-                    .fg(ClaudeTheme::TEXT_PRIMARY)),
+                    .bg(ModernTheme::BG_SECONDARY)
+                    .fg(ModernTheme::TEXT_PRIMARY)),
         );
     
     f.render_widget(status, area);

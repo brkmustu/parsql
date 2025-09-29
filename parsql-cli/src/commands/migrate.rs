@@ -50,8 +50,6 @@ pub fn handle_command(
 
 fn create_migration(name: &str, migration_type: &str, directory: &str) -> Result<()> {
     let timestamp = utils::get_timestamp();
-    let version = timestamp.parse::<i64>()
-        .context("Failed to parse timestamp as version")?;
     
     let dir_path = Path::new(directory);
     fs::create_dir_all(dir_path)
@@ -61,20 +59,21 @@ fn create_migration(name: &str, migration_type: &str, directory: &str) -> Result
     
     match migration_type {
         "sql" => {
-            let up_file = dir_path.join(format!("{}_{}_{}.up.sql", version, timestamp, safe_name));
-            let down_file = dir_path.join(format!("{}_{}_{}.down.sql", version, timestamp, safe_name));
+            // Standardized format: {timestamp}_{name}
+            let up_file = dir_path.join(format!("{}_{}.up.sql", timestamp, safe_name));
+            let down_file = dir_path.join(format!("{}_{}.down.sql", timestamp, safe_name));
             
             let up_content = format!(
                 "-- Migration: {}\n-- Version: {}\n-- Created: {}\n\n-- Add your UP migration SQL here\n",
                 name,
-                version,
+                timestamp,
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
             );
             
             let down_content = format!(
                 "-- Migration: {} (rollback)\n-- Version: {}\n-- Created: {}\n\n-- Add your DOWN migration SQL here\n",
                 name,
-                version,
+                timestamp,
                 chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
             );
             
@@ -89,7 +88,8 @@ fn create_migration(name: &str, migration_type: &str, directory: &str) -> Result
         }
         
         "rust" => {
-            let rust_file = dir_path.join(format!("{}_{}_{}.rs", version, timestamp, safe_name));
+            // Standardized format: {timestamp}_{name} (remove duplicate timestamp)
+            let rust_file = dir_path.join(format!("{}_{}.rs", timestamp, safe_name));
             
             let rust_content = format!(
                 r#"//! Migration: {}
@@ -125,13 +125,13 @@ impl Migration for Migration{} {{
     }}
 }}
 "#,
-                name,
-                version,
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                version,
-                version,
-                version,
-                safe_name
+                name,               // Migration comment
+                timestamp,          // Version comment  
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"), // Created comment
+                timestamp,          // struct name
+                timestamp,          // impl name
+                timestamp,          // version() return value
+                safe_name           // name() return value
             );
             
             fs::write(&rust_file, rust_content)

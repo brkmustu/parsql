@@ -7,7 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Scrollbar, ScrollbarOrientation, ScrollbarState},
     Frame,
 };
-use super::theme::ClaudeTheme;
+use super::theme::ModernTheme;
 
 pub struct MigrationContentView {
     content: Vec<String>,
@@ -93,12 +93,12 @@ impl MigrationContentView {
         let block = Block::default()
             .title(format!(" {} ", self.title))
             .borders(Borders::ALL)
-            .border_style(Style::default().fg(ClaudeTheme::BORDER))
-            .title_style(Style::default().fg(ClaudeTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD));
+            .border_style(Style::default().fg(ModernTheme::BORDER))
+            .title_style(Style::default().fg(ModernTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD));
         
         let paragraph = Paragraph::new(lines)
             .block(block)
-            .style(Style::default().fg(ClaudeTheme::TEXT_PRIMARY).bg(ClaudeTheme::BG_SECONDARY));
+            .style(Style::default().fg(ModernTheme::TEXT_PRIMARY).bg(ModernTheme::BG_SECONDARY));
         
         f.render_widget(paragraph, area);
         
@@ -120,7 +120,7 @@ impl MigrationContentView {
         
         // Render help text at bottom
         let help_text = " ↑/↓: scroll | PgUp/PgDn: page | q/Esc: close ";
-        let help_span = Span::styled(help_text, Style::default().fg(ClaudeTheme::TEXT_MUTED));
+        let help_span = Span::styled(help_text, Style::default().fg(ModernTheme::TEXT_MUTED));
         let help_x = area.x + area.width.saturating_sub(help_text.len() as u16 + 1);
         f.render_widget(help_span, Rect { x: help_x, y: area.y + area.height - 1, width: help_text.len() as u16, height: 1 });
     }
@@ -131,7 +131,7 @@ impl MigrationContentView {
         // Add line number
         spans.push(Span::styled(
             format!("{:4} │ ", line_number),
-            Style::default().fg(ClaudeTheme::TEXT_MUTED),
+            Style::default().fg(ModernTheme::TEXT_MUTED),
         ));
         
         // Simple SQL syntax highlighting
@@ -139,7 +139,7 @@ impl MigrationContentView {
         
         if trimmed.starts_with("--") {
             // SQL comment
-            spans.push(Span::styled(line.to_string(), Style::default().fg(ClaudeTheme::SUCCESS)));
+            spans.push(Span::styled(line.to_string(), Style::default().fg(ModernTheme::SUCCESS)));
         } else if trimmed.is_empty() {
             // Empty line
             spans.push(Span::raw(line.to_string()));
@@ -159,13 +159,13 @@ impl MigrationContentView {
                 
                 let word_upper = word.to_uppercase();
                 let style = if is_sql_keyword(&word_upper) {
-                    Style::default().fg(ClaudeTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD)
+                    Style::default().fg(ModernTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD)
                 } else if is_sql_type(&word_upper) {
-                    Style::default().fg(ClaudeTheme::WARNING)
+                    Style::default().fg(ModernTheme::WARNING)
                 } else if word.starts_with('\'') || word.starts_with('"') {
-                    Style::default().fg(ClaudeTheme::SUCCESS)
+                    Style::default().fg(ModernTheme::SUCCESS)
                 } else {
-                    Style::default().fg(ClaudeTheme::TEXT_PRIMARY)
+                    Style::default().fg(ModernTheme::TEXT_PRIMARY)
                 };
                 
                 spans.push(Span::styled(word.to_string(), style));

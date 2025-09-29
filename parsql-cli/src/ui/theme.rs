@@ -1,10 +1,10 @@
-//! Claude Code inspired theme colors
+//! Modern terminal theme colors
 
 use ratatui::style::Color;
 
-pub struct ClaudeTheme;
+pub struct ModernTheme;
 
-impl ClaudeTheme {
+impl ModernTheme {
     // Background colors
     pub const BG_PRIMARY: Color = Color::Rgb(24, 24, 27);      // #18181b - Main background
     pub const BG_SECONDARY: Color = Color::Rgb(39, 39, 42);    // #27272a - Secondary panels

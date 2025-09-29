@@ -211,6 +211,7 @@ Edit `parsql.toml` to customize migration settings.
     println!("  1. Set your DATABASE_URL environment variable");
     println!("  2. Create your first migration: {}", "parsql migrate create <name>".cyan());
     println!("  3. Run migrations: {}", "parsql migrate run".cyan());
+    println!("  4. Rollback to a specific version: {}", "parsql migrate rollback --to <version>".cyan());
     
     Ok(())
 }

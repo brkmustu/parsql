@@ -485,26 +485,34 @@ parsql -i
 #### 2. Command Line Mode
 
 ```bash
+# Global kurulum
+cargo install --path parsql-cli
+
 # Proje başlatma
-parsql init
+parsql init .
 
 # Migration oluşturma
-parsql migrate create "create users table" --migration-type sql
+parsql migrate create create_users_table
+
+# Veritabanı URL'ini ayarla
+export DATABASE_URL="sqlite:database.db"
+# veya PostgreSQL için:
+# export DATABASE_URL="postgresql://user:password@localhost/dbname"
 
 # Migration çalıştırma
-parsql migrate run --database-url postgresql://localhost/mydb
+parsql migrate run
 
 # Durum kontrolü
 parsql migrate status --detailed
 
 # Geri alma
-parsql migrate rollback --to 20240101000000
+parsql migrate rollback --to 0
 
 # Doğrulama
 parsql migrate validate --verify-checksums
 
 # Migration listesi
-parsql migrate list --pending
+parsql migrate list
 ```
 
 ### Konfigürasyon
@@ -539,10 +547,11 @@ export PARSQL_CONFIG="config/parsql.toml"
 
 ```bash
 # 1. Yeni blog projesi başlat
-parsql init --database-url postgresql://localhost/blog
+export DATABASE_URL="postgresql://localhost/blog"
+parsql init .
 
 # 2. İlk migration: Users tablosu
-parsql migrate create "create_users_table"
+parsql migrate create create_users_table
 # migrations/20240101120000_create_users_table.up.sql oluşturuldu
 
 # 3. SQL dosyasını düzenle:
@@ -569,7 +578,7 @@ EOF
 parsql migrate run
 
 # 6. Posts tablosu ekle
-parsql migrate create "create_posts_table"
+parsql migrate create create_posts_table
 cat > migrations/20240101130000_create_posts_table.up.sql << EOF
 CREATE TABLE posts (
     id SERIAL PRIMARY KEY,
@@ -640,7 +649,7 @@ parsql migrate run
 
 # 2. Yeni feature için migration
 git checkout -b feature/user-profiles
-parsql migrate create "add_user_profiles"
+parsql migrate create add_user_profiles
 
 # 3. Migration geliştirme ve test
 parsql -i  # TUI'de SQL dosyasını düzenle ve test et

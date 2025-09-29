@@ -10,7 +10,7 @@ use ratatui::{
     Frame,
 };
 
-use super::theme::ClaudeTheme;
+use super::theme::ModernTheme;
 
 #[derive(Debug, Clone)]
 pub struct OutputLine {
@@ -139,39 +139,39 @@ impl OutputStreamWidget {
             .map(|line| {
                 let (style, _prefix_style) = match line.line_type {
                     OutputLineType::Command => (
-                        Style::default().fg(ClaudeTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD),
-                        Style::default().fg(ClaudeTheme::ACCENT_PRIMARY),
+                        Style::default().fg(ModernTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD),
+                        Style::default().fg(ModernTheme::ACCENT_PRIMARY),
                     ),
                     OutputLineType::Info => (
-                        Style::default().fg(ClaudeTheme::TEXT_PRIMARY),
-                        Style::default().fg(ClaudeTheme::TEXT_DIM),
+                        Style::default().fg(ModernTheme::TEXT_PRIMARY),
+                        Style::default().fg(ModernTheme::TEXT_DIM),
                     ),
                     OutputLineType::Success => (
-                        Style::default().fg(ClaudeTheme::ACCENT_SUCCESS),
-                        Style::default().fg(ClaudeTheme::ACCENT_SUCCESS),
+                        Style::default().fg(ModernTheme::ACCENT_SUCCESS),
+                        Style::default().fg(ModernTheme::ACCENT_SUCCESS),
                     ),
                     OutputLineType::Warning => (
-                        Style::default().fg(ClaudeTheme::ACCENT_WARNING),
-                        Style::default().fg(ClaudeTheme::ACCENT_WARNING),
+                        Style::default().fg(ModernTheme::ACCENT_WARNING),
+                        Style::default().fg(ModernTheme::ACCENT_WARNING),
                     ),
                     OutputLineType::Error => (
-                        Style::default().fg(ClaudeTheme::ACCENT_ERROR),
-                        Style::default().fg(ClaudeTheme::ACCENT_ERROR),
+                        Style::default().fg(ModernTheme::ACCENT_ERROR),
+                        Style::default().fg(ModernTheme::ACCENT_ERROR),
                     ),
                     OutputLineType::Progress => (
-                        Style::default().fg(ClaudeTheme::ACCENT_INFO).add_modifier(Modifier::ITALIC),
-                        Style::default().fg(ClaudeTheme::ACCENT_INFO),
+                        Style::default().fg(ModernTheme::ACCENT_INFO).add_modifier(Modifier::ITALIC),
+                        Style::default().fg(ModernTheme::ACCENT_INFO),
                     ),
                     OutputLineType::Result => (
-                        Style::default().fg(ClaudeTheme::TEXT_PRIMARY),
-                        Style::default().fg(ClaudeTheme::TEXT_SECONDARY),
+                        Style::default().fg(ModernTheme::TEXT_PRIMARY),
+                        Style::default().fg(ModernTheme::TEXT_SECONDARY),
                     ),
                 };
                 
                 let content = vec![
                     Span::styled(
                         format!("[{}] ", line.timestamp),
-                        Style::default().fg(ClaudeTheme::TEXT_DIM),
+                        Style::default().fg(ModernTheme::TEXT_DIM),
                     ),
                     Span::styled(&line.content, style),
                 ];
@@ -184,18 +184,18 @@ impl OutputStreamWidget {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(ClaudeTheme::BORDER_PRIMARY))
+                    .border_style(Style::default().fg(ModernTheme::BORDER_PRIMARY))
                     .title(title)
                     .title_style(
                         Style::default()
-                            .fg(ClaudeTheme::TEXT_PRIMARY)
+                            .fg(ModernTheme::TEXT_PRIMARY)
                             .add_modifier(Modifier::BOLD)
                     )
-                    .style(Style::default().bg(ClaudeTheme::BG_SECONDARY))
+                    .style(Style::default().bg(ModernTheme::BG_SECONDARY))
             )
             .highlight_style(
                 Style::default()
-                    .bg(ClaudeTheme::BG_TERTIARY)
+                    .bg(ModernTheme::BG_TERTIARY)
                     .add_modifier(Modifier::BOLD)
             )
             .highlight_symbol("> ");

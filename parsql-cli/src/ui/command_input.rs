@@ -8,7 +8,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Frame,
 };
-use crate::ui::theme::ClaudeTheme;
+use crate::ui::theme::ModernTheme;
 
 #[derive(Debug, Clone)]
 pub struct CommandSuggestion {
@@ -229,15 +229,15 @@ impl CommandInput {
                 .enumerate()
                 .map(|(i, suggestion)| {
                     let style = if i == self.selected_suggestion {
-                        Style::default().bg(ClaudeTheme::SELECTION_BG).fg(ClaudeTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD)
+                        Style::default().bg(ModernTheme::SELECTION_BG).fg(ModernTheme::TEXT_PRIMARY).add_modifier(Modifier::BOLD)
                     } else {
-                        Style::default().fg(ClaudeTheme::TEXT_PRIMARY)
+                        Style::default().fg(ModernTheme::TEXT_PRIMARY)
                     };
                     
                     let content = vec![
                         Line::from(vec![
-                            Span::styled(&suggestion.command, Style::default().fg(ClaudeTheme::ACCENT_PRIMARY).add_modifier(if i == self.selected_suggestion { Modifier::BOLD } else { Modifier::empty() })),
-                            Span::styled(" - ", Style::default().fg(ClaudeTheme::TEXT_DIM)),
+                            Span::styled(&suggestion.command, Style::default().fg(ModernTheme::ACCENT_PRIMARY).add_modifier(if i == self.selected_suggestion { Modifier::BOLD } else { Modifier::empty() })),
+                            Span::styled(" - ", Style::default().fg(ModernTheme::TEXT_DIM)),
                             Span::styled(&suggestion.description, style),
                         ]),
                     ];
@@ -249,13 +249,13 @@ impl CommandInput {
             let suggestions_list = List::new(suggestions)
                 .block(Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(ClaudeTheme::BORDER_FOCUSED))
+                    .border_style(Style::default().fg(ModernTheme::BORDER_FOCUSED))
                     .title(" Commands ")
-                    .title_style(Style::default().fg(ClaudeTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD))
-                    .style(Style::default().bg(ClaudeTheme::COMMAND_BG)));
+                    .title_style(Style::default().fg(ModernTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD))
+                    .style(Style::default().bg(ModernTheme::COMMAND_BG)));
             
             // Clear the popup area first
-            f.render_widget(Block::default().style(Style::default().bg(ClaudeTheme::COMMAND_BG)), popup_area);
+            f.render_widget(Block::default().style(Style::default().bg(ModernTheme::COMMAND_BG)), popup_area);
             f.render_widget(suggestions_list, popup_area);
         }
         
@@ -267,13 +267,13 @@ impl CommandInput {
         };
         
         let input_widget = Paragraph::new(input_display.as_str())
-            .style(Style::default().fg(ClaudeTheme::TEXT_PRIMARY).bg(ClaudeTheme::COMMAND_BG))
+            .style(Style::default().fg(ModernTheme::TEXT_PRIMARY).bg(ModernTheme::COMMAND_BG))
             .block(Block::default()
                 .borders(Borders::ALL)
-                .border_style(Style::default().fg(ClaudeTheme::BORDER_FOCUSED).add_modifier(Modifier::BOLD))
+                .border_style(Style::default().fg(ModernTheme::BORDER_FOCUSED).add_modifier(Modifier::BOLD))
                 .title(" Command (ESC to cancel) ")
-                .title_style(Style::default().fg(ClaudeTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD))
-                .style(Style::default().bg(ClaudeTheme::COMMAND_BG)));
+                .title_style(Style::default().fg(ModernTheme::ACCENT_PRIMARY).add_modifier(Modifier::BOLD))
+                .style(Style::default().bg(ModernTheme::COMMAND_BG)));
         
         f.render_widget(input_widget, input_area);
         

@@ -19,7 +19,7 @@ impl MigrationCreator {
         fs::create_dir_all(&self.migrations_dir)
             .context("Failed to create migrations directory")?;
         
-        // Generate timestamp-based version
+        // Generate timestamp-based version (compatible with CLI format)
         let timestamp = Local::now().format("%Y%m%d%H%M%S").to_string();
         let safe_name = sanitize_name(name);
         
@@ -31,6 +31,7 @@ impl MigrationCreator {
     }
     
     fn create_sql_migration(&self, version: &str, name: &str) -> Result<MigrationFiles> {
+        // Use standardized naming format: {timestamp}_{name} (matching CLI after fix)
         let base_name = format!("{}_{}", version, name);
         let up_file = self.migrations_dir.join(format!("{}.up.sql", base_name));
         let down_file = self.migrations_dir.join(format!("{}.down.sql", base_name));
@@ -175,14 +176,6 @@ pub struct MigrationFiles {
 }
 
 fn sanitize_name(name: &str) -> String {
-    name.chars()
-        .map(|c| {
-            if c.is_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect::<String>()
-        .to_lowercase()
+    // Use same sanitization as CLI for consistency
+    name.replace(' ', "_").to_lowercase()
 }

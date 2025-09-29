@@ -26,42 +26,69 @@ cargo install --path .
 
 ## Quick Start
 
-### Interactive Mode (Recommended)
-
-Launch the interactive TUI:
+### 1. Global Installation
 ```bash
-parsql -i
+# Install from crates.io (when available)
+cargo install parsql-cli
+
+# Or install from source
+git clone https://github.com/yazdostum-nettr/parsql
+cd parsql
+cargo install --path parsql-cli
+```
+
+### 2. Initialize Project
+```bash
+# Initialize in current directory
+parsql init .
+
+# This creates:
+# - parsql.toml (configuration file)
+# - migrations/ (directory for migration files)  
+# - .gitignore (ignores database files)
+# - README.md (project documentation)
+```
+
+### 3. Create Your First Migration
+```bash
+parsql migrate create create_users_table
+
+# Edit the generated SQL files:
+# - migrations/{timestamp}_create_users_table.up.sql
+# - migrations/{timestamp}_create_users_table.down.sql
+```
+
+### 4. Run Migrations
+```bash
+# Set database URL
+export DATABASE_URL="sqlite:database.db"
+# or
+export DATABASE_URL="postgresql://user:password@localhost/dbname"
+
+# Run all pending migrations
+parsql migrate run
+
+# Check status
+parsql migrate status --detailed
+
+# Rollback if needed
+parsql migrate rollback --to 0
+```
+
+### 5. Interactive TUI Mode (Optional)
+```bash
+# Launch interactive mode
+parsql --interactive
 # or just
 parsql
 ```
 
-In interactive mode:
-- Press `/` to enter command mode (Claude Code style)
+In TUI mode:
 - Use arrow keys to navigate
+- Press `Enter` to select items
+- Press `/` for command mode
 - Press `?` for help
 - `Ctrl+Q` to quit
-
-### Command Mode
-
-1. **Initialize a new project**:
-```bash
-parsql init
-```
-
-This creates:
-- `parsql.toml` - Configuration file
-- `migrations/` - Directory for migration files
-- `.gitignore` - Ignores database files
-
-2. **Create a migration**:
-```bash
-parsql migrate create "create users table" --migration-type sql
-```
-
-3. **Run migrations**:
-```bash
-parsql migrate run
-```
 
 ## Configuration
 

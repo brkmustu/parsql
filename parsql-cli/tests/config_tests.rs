@@ -1,6 +1,6 @@
 //! Tests for configuration loading and validation
 
-use parsql_cli::config::{Config, DatabaseConfig, MigrationConfig, load_config};
+use parsql_cli::config::{Config, MigrationConfig, load_config};
 use tempfile::TempDir;
 use std::fs;
 
