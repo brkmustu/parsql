@@ -25,9 +25,8 @@ clap = { version = "4.5", features = ["derive", "env"] }
 anyhow = "1.0"
 thiserror = "2.0"
 
-[dependencies.parsql-migrations]
-workspace = true
-features = ["postgres", "sqlite"]
+# Migration framework
+parsql-migrations = { workspace = true, features = ["postgres", "sqlite"] }
 
 # Database dependencies - matching workspace versions
 postgres = { version = "0.19", optional = true }
